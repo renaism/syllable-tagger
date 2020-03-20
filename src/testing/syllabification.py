@@ -50,7 +50,7 @@ def syllabify(data_test, n, prob_args, state_elim=True, verbose=True):
     syllable_error_rate = 0
 
     syl_preds = []
-    is_syl_corrects = []
+    mm_counts = []
 
     i = 0
     progress = 0
@@ -68,14 +68,14 @@ def syllabify(data_test, n, prob_args, state_elim=True, verbose=True):
         total_syllables += len(real_syllables)
 
         # Compare the real and predicted syllables and count the differences
-        is_correct = True
-
-        if row.syllables != syl_pred:
-            is_correct = False
-            wrong_words += 1
-            wrong_syllables += mismatch_count(pred_syllables, real_syllables)
+        mm_count = 0
         
-        is_syl_corrects.append(is_correct)
+        if row.syllables != syl_pred:
+            wrong_words += 1
+            mm_count = mismatch_count(pred_syllables, real_syllables)
+            wrong_syllables += mm_count
+        
+        mm_counts.append(mm_count)
         syllable_error_rate = wrong_syllables / total_syllables
         progress = i / total_words
 
@@ -88,7 +88,7 @@ def syllabify(data_test, n, prob_args, state_elim=True, verbose=True):
 
     data_result = data_test.copy()
     data_result['prediction'] = syl_preds
-    data_result['is_correct'] = is_syl_corrects
+    data_result['mismatch_count'] = mm_counts
 
     end_t = time.time()
 
@@ -108,3 +108,40 @@ def syllabify(data_test, n, prob_args, state_elim=True, verbose=True):
             'duration': round(end_t - start_t, 2)
         }
     }
+
+def load_result(fname, folder='./'):
+    columns = ['word', 'syllables', 'prediction', 'mismatch_count']
+    data = pd.read_csv('{}{}'.format(folder, fname), sep='\t', header=None, names=columns, na_filter=False)
+    
+    total_words = len(data)
+    wrong_words = 0
+    total_syllables = 0
+    wrong_syllables = 0
+
+    for _, row in data.iterrows():
+        real_syllables = util.split_syllables(row['syllables'])
+        total_syllables += len(real_syllables)
+
+        if row['mismatch_count'] > 0:
+            wrong_words += 1
+            wrong_syllables += row['mismatch_count']
+    
+    syllable_error_rate = wrong_syllables / total_syllables
+    word_error_rate = wrong_words / total_words
+
+    result = {
+        'data': data,
+        'metadata': {
+            'total_words': total_words,
+            'wrong_words': wrong_words,
+            'correct_words': total_words - wrong_words,
+            'word_error_rate': round(word_error_rate, 5),
+            'total_syllables': total_syllables,
+            'wrong_syllables': wrong_syllables,
+            'correct_syllables': total_syllables - wrong_syllables,
+            'syllable_error_rate': round(syllable_error_rate, 5),
+        }
+    }
+    print('Successfully loaded "{}"'.format(fname))
+    
+    return result

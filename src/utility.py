@@ -146,3 +146,15 @@ def save_dict_to_log(data, fname, folder='./'):
     
     with open('{}{}_{}'.format(folder, timestamp, fname), mode='w') as f:
         f.write(json.dumps(data, indent=4))
+
+
+def save_result(result_data, fname='', folder='./'):
+    timestamp = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    path = '{}{}_{}'.format(folder, timestamp, fname)
+
+    result_data.to_csv(
+        path, 
+        sep='\t', 
+        index=False, 
+        header=False
+    )

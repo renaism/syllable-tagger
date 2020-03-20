@@ -1,3 +1,5 @@
+import json
+import src.utility as util
 from nltk.probability import FreqDist
 
 '''
@@ -51,6 +53,18 @@ def follow_count_dist(tags, n_gram, ceil=3):
     return fdist_c
 
 
+def cut_follow_fdist(fdist, ceil):
+    fdist = fdist.copy()
+    frequencies = list(fdist.keys())
+
+    for i in frequencies:
+        if i > ceil:
+            fdist[ceil] += fdist[i]
+            del fdist[i]
+    
+    return fdist
+
+
 def gkn_discount(n_gram, n, c, ceil=3, highest_order=True):
     if c == 0:
         return 0
@@ -66,7 +80,7 @@ def gkn_discount(n_gram, n, c, ceil=3, highest_order=True):
     return max(d, 0)
 
 
-def gkn(tags, n_gram, d_ceil=3, weights=None, cache=None, d_cache=None, highest_order=True):
+def gkn(tags, n_gram, d_ceil=3, w=1, cache=None, d_cache=None, highest_order=True):
     n = len(tags)
     
     # Key used to access cache
@@ -75,12 +89,6 @@ def gkn(tags, n_gram, d_ceil=3, weights=None, cache=None, d_cache=None, highest_
     # Attempt to get probability from cache
     if cache != None and tags in cache[ckey][n]:
         return cache[ckey][n][tags]
-    
-    # Weight of the probabilty
-    if weights == None:
-        weight = 1
-    else:
-        weight = weights[n]
     
     # For unigram
     if n == 1:
@@ -94,11 +102,12 @@ def gkn(tags, n_gram, d_ceil=3, weights=None, cache=None, d_cache=None, highest_
 
         # Constant to ensure the distribution sums to 1
         if count_prec > 0:
-            fc_dist = follow_count_dist(tags_prec, n_gram, ceil=d_ceil)
+            #fc_dist = follow_count_dist(tags_prec, n_gram, ceil=d_ceil)
+            fc_dist = cut_follow_fdist(n_gram.get_follow_fdist(tags_prec), ceil=d_ceil)
 
         # If context count is 0 or fc_dist is 0, back-off to lower order n-gram
         if count_prec == 0 or len(fc_dist.keys()) <= 1:
-            return gkn(tags[1:], n_gram, d_ceil=d_ceil, weights=weights, cache=cache, d_cache=d_cache) 
+            return gkn(tags[1:], n_gram, d_ceil=d_ceil, w=w, cache=cache, d_cache=d_cache) 
 
         if highest_order:
             # Raw count of tag sequence
@@ -127,9 +136,9 @@ def gkn(tags, n_gram, d_ceil=3, weights=None, cache=None, d_cache=None, highest_
         L = gamma / count_prec
 
         # Main formula
-        prob = (max(ckn-D, 0)/ckn_prec) + L*gkn(tags[1:], n_gram, d_ceil=d_ceil, weights=weights, cache=cache, d_cache=d_cache, highest_order=False) 
+        prob = (max(ckn-D, 0)/ckn_prec) + L*gkn(tags[1:], n_gram, d_ceil=d_ceil, w=w, cache=cache, d_cache=d_cache, highest_order=False) 
     
-    weighted_prob = prob * weight
+    weighted_prob = prob * w
     if cache != None:
         cache[ckey][n][tags] = weighted_prob
 
@@ -141,7 +150,7 @@ def stupid_backoff(tags, n_gram, alpha=0.4, cache=None):
 
     # Check the cache if the probability of the tags already exists
     if cache != None and tags in cache[n]:
-        return cache[n][tags]
+        return cache['top'][n][tags]
 
     count = n_gram.get_count(tags)
 
@@ -157,7 +166,7 @@ def stupid_backoff(tags, n_gram, alpha=0.4, cache=None):
     
     # Store the probability to the cache
     if cache != None:
-        cache[n][tags] = prob
+        cache['top'][n][tags] = prob
     
     return prob
 
@@ -169,27 +178,32 @@ def _get_probability(tags, args, aug=False):
     else:
         n_gram = args['n_gram_aug']
 
+    w = args['aug_w'] if aug else 1
+
     # Assign caches
     cache = None
-    d_cache = None
 
     if not aug and 'cache' in args:
         cache = args['cache']
     elif aug and 'cache_aug' in args:
         cache = args['cache_aug']
-    
-    if not aug and 'd_cache' in args:
-        d_cache = args['d_cache']
-    elif aug and 'd_cache_aug' in args:
-        d_cache = args['d_cache_aug']
 
     # Call the corresponding probability/smoothing method
     if args['method'] == 'kn':
-        return kn(tags, n_gram, args['d'])
+        return w * kn(tags, n_gram, args['d'])
+    
     elif args['method'] == 'gkn':
-        return gkn(tags, n_gram, d_ceil=args['d_ceil'], cache=cache, d_cache=d_cache)
+        d_cache = None
+
+        if not aug and 'd_cache' in args:
+            d_cache = args['d_cache']
+        elif aug and 'd_cache_aug' in args:
+            d_cache = args['d_cache_aug']
+
+        return gkn(tags, n_gram, d_ceil=args['d_ceil'], cache=cache, w=w, d_cache=d_cache)
+    
     elif args['method'] == 'stupid_backoff':
-        return stupid_backoff(tags, n_gram, args['alpha'], cache=cache)
+        return w * stupid_backoff(tags, n_gram, args['alpha'], cache=cache)
         
 
 
@@ -197,19 +211,16 @@ def get_probability(tags, args):
     prob = _get_probability(tags, args)
     
     if 'with_aug' in args and args['with_aug']:
-        prob += args['aug_w'] * _get_probability(tags, args, aug=True)
+        prob += _get_probability(tags, args, aug=True)
 
     return prob
 
 
-def generate_prob_cache(n, prob_method):
-    if prob_method in ['gkn']:
-        return {
-            'top': {i: {} for i in range(1, n+1)},
-            'low': {i: {} for i in range(1, n+1)} 
-        }
-    else:
-        return {i: {} for i in range(1, n+1)} 
+def generate_prob_cache(n):
+    return {
+        'top': {i: {} for i in range(1, n+1)},
+        'low': {i: {} for i in range(1, n+1)} 
+    }
 
 
 def generate_gkn_discount_cache(n, n_gram, ceil):
@@ -222,3 +233,44 @@ def generate_gkn_discount_cache(n, n_gram, ceil):
             d_cache[i][c] = gkn_discount(n_gram, i, c, ceil=ceil, highest_order=i==n)
     
     return d_cache
+
+
+def save_cache(cache, fname, folder='./'):
+    data = {}
+    
+    # Access top and low level of the cache
+    for level in cache:
+        data[level] = {}
+
+        # Access each nth-gram order of the cache
+        for i in cache[level]:
+            data[level][i] = {}
+
+            # Access each gram item of the cache
+            for k, v in cache[level][i].items():
+                data[level][i][util.tags_to_str(k)] = v 
+    
+    with open('{}{}'.format(folder, fname), mode='w') as f:
+        f.write(json.dumps(data))
+
+
+def load_cache(fname, folder='./'):
+    with open('{}{}'.format(folder, fname)) as f:
+        data = json.loads(f.read())
+    
+    cache = {}
+
+    # Access top and low level of the data
+    for level in data:
+        cache[level] = {}
+
+        # Access each nth-gram order of the data
+        for i, data_i in data[level].items():
+            i = int(i)
+            cache[level][i] = {}
+
+            # Access each gram item of the data
+            for k, v in data_i.items():
+                cache[level][i][util.str_to_tags(k)] = float(v)
+    
+    return cache

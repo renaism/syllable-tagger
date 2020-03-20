@@ -5,9 +5,9 @@ import json
 import time
 
 class NGram():
-    def __init__(self, tokens=None, n=2, verbose=False):
+    def __init__(self, tokens=None, n=2, build_cont_fdist=True, build_follow_fdist=False, verbose=False):
         if tokens != None:
-            self.generate(tokens, n, verbose)
+            self.generate(tokens, n, build_cont_fdist, build_follow_fdist, verbose)
     
 
     '''
@@ -15,7 +15,7 @@ class NGram():
     In  : tokens(list), n (int)
     F.S.: NGram initialized with frequency and continuation frequency distributions of each nth-gram
     '''
-    def generate(self, tokens, n=2, verbose=False):
+    def generate(self, tokens, n=2, build_cont_fdist=True, build_follow_fdist=False, verbose=False):
         start_t = time.time()
         n_tokens = len(tokens)
         util.printv(verbose, 'Number of words: ', n_tokens)
@@ -44,36 +44,51 @@ class NGram():
             util.printv(verbose, 'n: {}/{} | DONE in {:.2f} s'.format(i, n, time.time() - start_ti))
         
         # Build continuation count table
-        util.printv(verbose, '\nBuilding continuation frequency distribution')
-        self.continuation_fdist = {}
+        if build_cont_fdist:
+            util.printv(verbose, '\nBuilding continuation frequency distribution')
+            self.continuation_fdist = {}
 
-        for i in range(1, n):
-            start_ti = time.time()
-            self.continuation_fdist[i] = FreqDist()
-            len_fdist = self.fdist[i+1].B()
+            for i in range(1, n):
+                start_ti = time.time()
+                self.continuation_fdist[i] = FreqDist()
+                len_fdist = self.fdist[i+1].B()
 
-            for j, grams in enumerate(self.fdist[i+1]):
-                self.continuation_fdist[i][grams[1:]] += 1
+                for j, gram in enumerate(self.fdist[i+1]):
+                    self.continuation_fdist[i][gram[1:]] += 1
 
-                util.printv(verbose, 'n: {}/{} | Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r')
-            
-            util.printv(verbose, 'n: {}/{} | DONE in {:.2f} s'.format(i, n-1, time.time() - start_ti))
+                    util.printv(verbose, 'n: {}/{} | Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r')
+                
+                util.printv(verbose, 'n: {}/{} | DONE in {:.2f} s'.format(i, n-1, time.time() - start_ti))
         
         # Build follow count table
-        util.printv(verbose, '\nBuilding follow frequency distribution')
-        self.follow_fdist = {}
+        if build_follow_fdist:
+            util.printv(verbose, '\nBuilding follow frequency distribution')
+            self.follow_fdist = {}
 
-        for i in range(1, n):
-            start_ti = time.time()
-            self.follow_fdist[i] = FreqDist()
-            len_fdist = self.fdist[i+1].B()
+            for i in range(1, n):
+                start_ti = time.time()
+                self.follow_fdist[i] = {}
+                len_fdist = self.fdist[i+1].B()
 
-            for j, grams in enumerate(self.fdist[i+1]):
-                self.follow_fdist[i][grams[:-1]] += 1
+                for j, gram in enumerate(self.fdist[i+1]):
+                    gram_prec = gram[:-1]
 
-                util.printv(verbose, 'n: {}/{} | Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r')
-            
-            util.printv(verbose, 'n: {}/{} | DONE in {:.2f} s'.format(i, n-1, time.time() - start_ti))
+                    if gram_prec not in self.follow_fdist[i]:
+                        self.follow_fdist[i][gram_prec] = FreqDist()
+                    
+                    self.follow_fdist[i][gram_prec][gram[-1]] += self.fdist[i+1][gram]
+
+                    util.printv(verbose, 'n: {}/{} | [Pass 1] Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r')
+                
+                # Truncate to count distribution
+                len_fdist = len(self.follow_fdist[i])
+
+                for gram_prec, fdist in self.follow_fdist[i].items():
+                    self.follow_fdist[i][gram_prec] = fdist.r_Nr()
+
+                    util.printv(verbose, 'n: {}/{} | [Pass 2] Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r')
+                
+                util.printv(verbose, 'n: {}/{} | DONE in {:.2f} s'.format(i, n-1, time.time() - start_ti))
 
         util.printv(verbose, '\nFinished building n-gram in {:.2f} s'.format(time.time() - start_t))
     
@@ -120,14 +135,15 @@ class NGram():
 
 
     '''
-    Desc: Get follow frequency distribution of the nth-gram
-    In  : n (int)
+    Desc: Get follow frequency distribution of a gram
+    In  : gram (tuple)
     Out : nltk.FreqDist
     '''
-    def get_follow_fdist(self, n=None):
-        if n == None:
-            n = self.n
-        return self.follow_fdist[n]
+    def get_follow_fdist(self, gram):
+        n = len(gram)
+        assert n <= self.n
+
+        return self.follow_fdist[n][gram]
 
 
     '''
@@ -251,7 +267,7 @@ def load(fname, n_max=None, load_cont_fdist=True, load_follow_fdist=True):
             ngram.fdist[i][tags] = int(v)
     
     # Decode continuation frequency distribution
-    if load_cont_fdist and 'continuation_fdist' in data:
+    if load_cont_fdist:
         ngram.continuation_fdist = {}
 
         for i, cfd in data['continuation_fdist'].items():
@@ -267,7 +283,7 @@ def load(fname, n_max=None, load_cont_fdist=True, load_follow_fdist=True):
                 ngram.continuation_fdist[i][tags] = int(v)
     
     # Decode follow frequency distribution
-    if load_follow_fdist and 'follow_fdist' in data:
+    if load_follow_fdist:
         ngram.follow_fdist = {}
 
         for i, ffd in data['follow_fdist'].items():
@@ -276,11 +292,14 @@ def load(fname, n_max=None, load_cont_fdist=True, load_follow_fdist=True):
             if i > n_max:
                 continue 
             
-            ngram.follow_fdist[i] = FreqDist()
+            ngram.follow_fdist[i] = {}
 
-            for k, v in ffd.items():
-                tags = util.str_to_tags(k)
-                ngram.follow_fdist[i][tags] = int(v)
+            for gram, fdist in ffd.items():
+                tags = util.str_to_tags(gram)
+                ngram.follow_fdist[i][tags] = FreqDist()
+
+                for k, v in fdist.items():
+                    ngram.follow_fdist[i][tags][int(k)] = int(v)
 
     # Get all unique grams from fdist keys
     ngram.grams = {}
