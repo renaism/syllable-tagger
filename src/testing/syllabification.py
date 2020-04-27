@@ -40,7 +40,7 @@ Desc: Syllabify each word in the test set
 In  : data_test (pd.DataFrame), n (int), prob_args (dict), args (dict)
 Out : pd.DataFrame
 '''
-def syllabify(data_test, n, prob_args, state_elim=True, verbose=True):
+def syllabify(data_test, n, prob_args, state_elim=True, validation=True, verbose=True):
     start_t = time.time()
 
     total_words = len(data_test)
@@ -63,20 +63,22 @@ def syllabify(data_test, n, prob_args, state_elim=True, verbose=True):
         syl_pred = util.tags_to_segmented_word(row.word, tag_sequence)
         syl_preds.append(syl_pred)
 
-        real_syllables = util.split_syllables(row.syllables)
-        pred_syllables = util.split_syllables(syl_pred)
-        total_syllables += len(real_syllables)
-
         # Compare the real and predicted syllables and count the differences
         mm_count = 0
         
-        if row.syllables != syl_pred:
-            wrong_words += 1
-            mm_count = mismatch_count(pred_syllables, real_syllables)
-            wrong_syllables += mm_count
+        if validation:
+            real_syllables = util.split_syllables(row.syllables)
+            total_syllables += len(real_syllables)
+
+            if row.syllables != syl_pred:
+                wrong_words += 1
+                pred_syllables = util.split_syllables(syl_pred)
+                mm_count = mismatch_count(pred_syllables, real_syllables)
+                wrong_syllables += mm_count
         
-        mm_counts.append(mm_count)
-        syllable_error_rate = wrong_syllables / total_syllables
+            mm_counts.append(mm_count)
+            syllable_error_rate = wrong_syllables / total_syllables
+        
         progress = i / total_words
 
         output = '\rWords tagged: {}/{} ({:.2f}%)'.format(i, total_words, progress * 100)
@@ -88,8 +90,10 @@ def syllabify(data_test, n, prob_args, state_elim=True, verbose=True):
 
     data_result = data_test.copy()
     data_result['prediction'] = syl_preds
-    data_result['mismatch_count'] = mm_counts
 
+    if validation:
+        data_result['mismatch_count'] = mm_counts
+    
     end_t = time.time()
 
     return {
@@ -109,6 +113,28 @@ def syllabify(data_test, n, prob_args, state_elim=True, verbose=True):
         }
     }
 
+
+'''
+Desc: Save syllabification result to a file
+In  : result_data (pd.DataFrame), fname (str), folder (str), with_timestamp (bool)
+'''
+def save_result(result_data, fname='', folder='./', with_timestamp=True):
+    timestamp = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + '_' if with_timestamp else ''
+    path = '{}{}{}'.format(folder, timestamp, fname)
+
+    result_data.to_csv(
+        path, 
+        sep='\t', 
+        index=False, 
+        header=False
+    )
+
+
+'''
+Desc: Load syllabification result from a file
+In  : fname (str), folder (str)
+Out : dict
+'''
 def load_result(fname, folder='./'):
     columns = ['word', 'syllables', 'prediction', 'mismatch_count']
     data = pd.read_csv('{}{}'.format(folder, fname), sep='\t', header=None, names=columns, na_filter=False)
@@ -145,3 +171,19 @@ def load_result(fname, folder='./'):
     print('Successfully loaded "{}"'.format(fname))
     
     return result
+
+
+'''
+Desc: Compare two result based on correctness of each result
+In  : result1 (pd.DataFrame), result2 (pd.DataFrame), result1_wrong (bool), result2_wrong (bool)
+Out : dict
+'''
+def compare_results(result1, result2, result1_wrong=True, result2_wrong=False):
+    df = pd.merge(
+        result1['data'], result2['data'],
+        how='inner', on=['word', 'syllables'], suffixes=('_1', '_2')
+    )
+
+    return df[
+        (((df['mismatch_count_1'] > 0) == result1_wrong) & ((df['mismatch_count_2'] > 0) == result2_wrong))
+    ]

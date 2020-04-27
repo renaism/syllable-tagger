@@ -163,7 +163,7 @@ def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
                     best = (va, prev_state)
                 
             V[t, j] = best[0]
-            B[t, state] = best[1]
+            B[t, state] = best[1] #if best[1] != None else states[np.argmax(V[t-1])]
     
     util.printv(verbose, '\nTotal probability calculations:', prob_calc)
 

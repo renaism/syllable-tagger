@@ -3,8 +3,8 @@ import src.utility as util
 from nltk.probability import FreqDist
 
 '''
-Desc: Get probability of "tags" from "ngram" with kneser-ney smoothing
-In  : n_gram (NGram), tags (tuple), d (float), highest_order (bool)
+Desc: Get the probability of a tag sqeuence from an n-gram with kneser-ney smoothing
+In  : tags (tuple), n_gram (NGram), d (float), highest_order (bool)
 Out : float
 '''
 def kn(tags, n_gram, d=0.75, highest_order=True):
@@ -34,6 +34,11 @@ def kn(tags, n_gram, d=0.75, highest_order=True):
     return (max(ckn-d, 0) / max(ckn_prec, 1)) + L * kn(tags[1:], n_gram, d=d, highest_order=False)
 
 
+'''
+Desc: Get follow count distribution of a tag sequence, used in gkn
+In  : tags (tuple), n_gram (NGram), ceil (int)
+Out : defaultdict
+'''
 def follow_count_dist(tags, n_gram, ceil=3):
     n = len(tags) + 1
     assert n <= n_gram.N()
@@ -53,6 +58,11 @@ def follow_count_dist(tags, n_gram, ceil=3):
     return fdist_c
 
 
+'''
+Desc: Cut-off follow count distribution with a max value (ceil)
+In  : fdist (defaultdict), ceil (int)
+Out : defaultdict
+'''
 def cut_follow_fdist(fdist, ceil):
     fdist = fdist.copy()
     frequencies = list(fdist.keys())
@@ -65,6 +75,11 @@ def cut_follow_fdist(fdist, ceil):
     return fdist
 
 
+'''
+Desc: Calculate discount value used in gkn
+In  : n_gram (NGram), n (int), c (int), ceil (int), highest_order (bool)
+Out : float
+'''
 def gkn_discount(n_gram, n, c, ceil=3, highest_order=True):
     if c == 0:
         return 0
@@ -80,6 +95,11 @@ def gkn_discount(n_gram, n, c, ceil=3, highest_order=True):
     return max(d, 0)
 
 
+'''
+Desc: Get the probability of a tag sqeuence from an n-gram with generalized kneser-ney smoothing
+In  : tags (tuple), n_gram (NGram), d_ceil (int), w (int), cache (dict), d_cache (dict), highest_order (bool)
+Out : float
+'''
 def gkn(tags, n_gram, d_ceil=3, w=1, cache=None, d_cache=None, highest_order=True):
     n = len(tags)
     
@@ -145,6 +165,11 @@ def gkn(tags, n_gram, d_ceil=3, w=1, cache=None, d_cache=None, highest_order=Tru
     return weighted_prob
 
 
+'''
+Desc: Get the probability of a tag sqeuence from an n-gram with stupid backoff smoothing
+In  : tags (tuple), n_gram (NGram), alpha (float), cache (dict)
+Out : float
+'''
 def stupid_backoff(tags, n_gram, alpha=0.4, cache=None):
     n = len(tags)
 
@@ -171,6 +196,11 @@ def stupid_backoff(tags, n_gram, alpha=0.4, cache=None):
     return prob
 
 
+'''
+Desc: Get the probability of a tag sequence with specific arguments
+In  : tags (tuple), args (dict), aug (bool)
+Out : float
+'''
 def _get_probability(tags, args, aug=False):    
     # Assign n-gram
     if not aug:
@@ -206,7 +236,11 @@ def _get_probability(tags, args, aug=False):
         return w * stupid_backoff(tags, n_gram, args['alpha'], cache=cache)
         
 
-
+'''
+Desc: Wrapper for _get_probability function
+In  : tags (tuple), args (dict)
+Out : float
+'''
 def get_probability(tags, args):
     prob = _get_probability(tags, args)
     
@@ -216,6 +250,11 @@ def get_probability(tags, args):
     return prob
 
 
+'''
+Desc: Initialize a probability cache
+In  : n (int)
+Out : dict
+'''
 def generate_prob_cache(n):
     return {
         'top': {i: {} for i in range(1, n+1)},
@@ -223,6 +262,11 @@ def generate_prob_cache(n):
     }
 
 
+'''
+Desc: Initialize a discount cache
+In  : n (int), n_gram (NGram), ceil (int)
+Out : dict
+'''
 def generate_gkn_discount_cache(n, n_gram, ceil):
     d_cache = {}
 
@@ -235,6 +279,10 @@ def generate_gkn_discount_cache(n, n_gram, ceil):
     return d_cache
 
 
+'''
+Desc: Save a probability cache to a file
+In  : cache (dict), fname (str), folder (str)
+'''
 def save_cache(cache, fname, folder='./'):
     data = {}
     
@@ -254,6 +302,11 @@ def save_cache(cache, fname, folder='./'):
         f.write(json.dumps(data))
 
 
+'''
+Desc: Load a probability cache from a file
+In  : fname (str), folder (str)
+Out : dict
+'''
 def load_cache(fname, folder='./'):
     with open('{}{}'.format(folder, fname)) as f:
         data = json.loads(f.read())

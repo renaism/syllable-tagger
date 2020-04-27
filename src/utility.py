@@ -10,13 +10,23 @@ Out : tuple
 '''
 def extract_syllable(syllable):
     # Onset, consonant prefix
-    ons = re.search(r'^[^aeiou]*', syllable)
+    ons_match = re.search(r'^[^aeiou]*', syllable)
     # Nucleus, vocal or diphtong
-    nuc = re.search(r'[aeiou]+', syllable)
+    nuc_match = re.search(r'[aeiou]+', syllable)
     # Coda, consonant suffix
-    cod = re.search(r'[^aeiou]*$', syllable)
-    
-    return (ons.group(), nuc.group(), cod.group())
+    cod_match = re.search(r'[^aeiou]*$', syllable)
+
+    # Take care of edge cases (unusual syllables)
+    onset = ons_match.group()
+
+    if nuc_match != None:
+        nucleus = nuc_match.group()
+        coda    = cod_match.group()
+    else:
+        nucleus = ''
+        coda    = ''
+
+    return (onset, nucleus, coda)
 
 
 '''
@@ -146,15 +156,3 @@ def save_dict_to_log(data, fname, folder='./'):
     
     with open('{}{}_{}'.format(folder, timestamp, fname), mode='w') as f:
         f.write(json.dumps(data, indent=4))
-
-
-def save_result(result_data, fname='', folder='./'):
-    timestamp = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
-    path = '{}{}_{}'.format(folder, timestamp, fname)
-
-    result_data.to_csv(
-        path, 
-        sep='\t', 
-        index=False, 
-        header=False
-    )

@@ -186,11 +186,14 @@ class NGram():
     Desc: Pretty print the frequency distribution of the nth-gram
     In  : n (int)
     '''
-    def print_fdist(self, n=None):
+    def print_fdist(self, n=None, limit=None):
         if n == None:
             n = self.n
         
-        for gram, _ in self.fdist[n].most_common():
+        if limit == None:
+            limit = len(self.fdist[n])
+        
+        for gram, _ in self.fdist[n].most_common()[:limit]:
             print(gram, ': ', self.fdist[n][gram])
 
 
