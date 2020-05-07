@@ -1,7 +1,7 @@
 import time
 import numpy as np
-import src.utility as util
-import src.testing.probability as probability
+import utility as util
+import testing.probability as probability
 
 VOCAL_LETTERS = ['a', 'e', 'i', 'o', 'u']
 

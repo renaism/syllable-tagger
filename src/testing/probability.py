@@ -1,5 +1,5 @@
 import json
-import src.utility as util
+import utility as util
 from nltk.probability import FreqDist
 
 '''

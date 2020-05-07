@@ -3,6 +3,11 @@ import numpy as np
 import time
 import json
 
+class ContinuousPrint(object):
+    def __init__(self, time_interval=1.0):
+        self.time_interval = time_interval
+        self.last_time = time.time() - time_interval
+
 '''
 Desc: Extract the onset, nucleus, and coda from a valid syllable
 In  : syllable (str)
@@ -128,11 +133,19 @@ def log_prob(prob):
 
 '''
 Desc: Print objects if the verbose flag is set to True
-In  : verbose (bool), *args
+In  : verbose (bool), *args, end (char), cp (ContinuousPrint)
 '''
-def printv(verbose, *args, end='\n'):
-    if verbose:
-        print(*args, end=end)
+def printv(verbose, *args, end='\n', cp=None):
+    if not verbose:
+        return
+    
+    if cp != None: 
+        if time.time() < cp.last_time + cp.time_interval:
+            return
+        else:
+            cp.last_time = time.time()
+
+    print(*args, end=end)
 
 
 '''
@@ -148,11 +161,23 @@ def print_dict(data, blank_line_after=True):
 
 
 '''
-Desc: Save dict to a log file
-In: data (dict), fname (str)
+Desc: Get current date and time in formatted text
+Out : str
 '''
-def save_dict_to_log(data, fname, folder='./'):
-    timestamp = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+def get_current_timestamp():
+    return time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+
+
+'''
+Desc: Save dict to a log file
+In: data (dict), fdir (str)
+Out: str
+'''
+def save_dict_to_log(data, fname, fdir='./'):
+    timestamp = get_current_timestamp()
+    fpath = f"{fdir}/{timestamp}_{fname}.log"
     
-    with open('{}{}_{}'.format(folder, timestamp, fname), mode='w') as f:
+    with open(fpath, mode='w') as f:
         f.write(json.dumps(data, indent=4))
+    
+    return fpath

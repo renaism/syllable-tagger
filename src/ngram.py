@@ -1,6 +1,6 @@
 from nltk.util import ngrams
 from nltk.probability import FreqDist
-import src.utility as util
+import utility as util
 import json
 import time
 
@@ -20,6 +20,8 @@ class NGram():
         n_tokens = len(tokens)
         util.printv(verbose, 'Number of words: ', n_tokens)
 
+        cp = util.ContinuousPrint()
+
         # Build frequency table from unigram to n-gram
         util.printv(verbose, '\nBuilding frequency distribution')
         self.n = n
@@ -37,7 +39,7 @@ class NGram():
                 for gram in word_ngrams:
                     self.fdist[i][gram] += 1
                 
-                util.printv(verbose, 'n: {}/{} | Words: {}/{}'.format(i, n, j, n_tokens), end='\r')
+                util.printv(verbose, 'n: {}/{} | Words: {}/{}'.format(i, n, j, n_tokens), end='\r', cp=cp)
 
             self.grams[i] = list(self.fdist[i].keys())
             
@@ -56,7 +58,7 @@ class NGram():
                 for j, gram in enumerate(self.fdist[i+1]):
                     self.continuation_fdist[i][gram[1:]] += 1
 
-                    util.printv(verbose, 'n: {}/{} | Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r')
+                    util.printv(verbose, 'n: {}/{} | Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r', cp=cp)
                 
                 util.printv(verbose, 'n: {}/{} | DONE in {:.2f} s'.format(i, n-1, time.time() - start_ti))
         
@@ -78,7 +80,7 @@ class NGram():
                     
                     self.follow_fdist[i][gram_prec][gram[-1]] += self.fdist[i+1][gram]
 
-                    util.printv(verbose, 'n: {}/{} | [Pass 1] Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r')
+                    util.printv(verbose, 'n: {}/{} | [Pass 1] Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r', cp=cp)
                 
                 # Truncate to count distribution
                 len_fdist = len(self.follow_fdist[i])
@@ -86,7 +88,7 @@ class NGram():
                 for gram_prec, fdist in self.follow_fdist[i].items():
                     self.follow_fdist[i][gram_prec] = fdist.r_Nr()
 
-                    util.printv(verbose, 'n: {}/{} | [Pass 2] Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r')
+                    util.printv(verbose, 'n: {}/{} | [Pass 2] Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r', cp=cp)
                 
                 util.printv(verbose, 'n: {}/{} | DONE in {:.2f} s'.format(i, n-1, time.time() - start_ti))
 
@@ -199,10 +201,10 @@ class NGram():
 
 '''
 Desc: Encode the n-gram to JSON and save it in a file
-In  : ngram (NGram), fname (str)
+In  : ngram (NGram), fname (str), fdir (str)
 F.S.: n-gram saved in a file
 '''
-def save(ngram, fname):
+def save(ngram, fname, fdir):
     data = {
         'N': ngram.n,
         'fdist': {},
@@ -232,17 +234,19 @@ def save(ngram, fname):
             data['follow_fdist'][i][util.tags_to_str(k)] = v
     
     # Write to file
-    with open(fname, mode='w') as f:
+    fpath = f"{fdir}/{fname}.json" 
+
+    with open(fpath, mode='w') as f:
         f.write(json.dumps(data))
 
 
 '''
 Desc: Load n-gram from a file and decode it
-In  : fname (str), n_max (int), load_cont_fdist (bool), load_follow_fdist (bool)
+In  : fpath (str), n_max (int), load_cont_fdist (bool), load_follow_fdist (bool)
 Out : NGram
 '''
-def load(fname, n_max=None, load_cont_fdist=True, load_follow_fdist=True):
-    with open(fname) as f:
+def load(fpath, n_max=None, load_cont_fdist=True, load_follow_fdist=True):
+    with open(fpath) as f:
         data = json.loads(f.read())
 
     # n_max denotes max nth-gram loaded

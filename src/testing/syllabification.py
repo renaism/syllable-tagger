@@ -2,8 +2,9 @@ import time
 import sys
 import pandas as pd
 import numpy as np
-import src.testing.tagger as tagger
-import src.utility as util
+import testing.tagger as tagger
+import testing.probability as probability
+import utility as util
 
 '''
 Desc: Count the number of wrong syllables from the prediction compared to the true syllables
@@ -42,8 +43,25 @@ Out : pd.DataFrame
 '''
 def syllabify(data_test, n, prob_args, state_elim=True, validation=True, verbose=True):
     start_t = time.time()
-
+    
     total_words = len(data_test)
+    util.printv(verbose, f"Total words: {total_words}")
+
+    # n-gram probability cache
+    prob_args["cache"] = probability.generate_prob_cache(n)
+
+    # GKN discount cache
+    if prob_args["method"] == "gkn":
+        prob_args["d_cache"] = probability.generate_gkn_discount_cache(n, prob_args["n_gram"], prob_args["d_ceil"])
+    
+    # Augmented n-gram probability cache
+    if prob_args["with_aug"]:
+        prob_args["cache_aug"] = probability.generate_prob_cache(n)
+
+        # GKN discount cache
+        if prob_args["method"] == "gkn":
+            prob_args["d_cache_aug"] = probability.generate_gkn_discount_cache(n, prob_args["n_gram_aug"], prob_args["d_ceil"])
+
     wrong_words = 0
     total_syllables = 0
     wrong_syllables = 0
@@ -54,6 +72,8 @@ def syllabify(data_test, n, prob_args, state_elim=True, validation=True, verbose
 
     i = 0
     progress = 0
+
+    cp = util.ContinuousPrint()
 
     for row in data_test.itertuples():
         i += 1
@@ -81,10 +101,13 @@ def syllabify(data_test, n, prob_args, state_elim=True, validation=True, verbose
         
         progress = i / total_words
 
-        output = '\rWords tagged: {}/{} ({:.2f}%)'.format(i, total_words, progress * 100)
+        output = 'Words tagged: {}/{} ({:.2f}%)'.format(i, total_words, progress * 100)
         output += ' | SER: {:.3f}%'.format(syllable_error_rate * 100)
         output += ' | Running time: {:.2f} s'.format(time.time() - start_t)
-        util.printv(verbose, output, end='')
+        if progress < 1:
+            util.printv(verbose, output, end='\r', cp=cp)
+        else:
+            util.printv(verbose, output)
         
     word_error_rate = wrong_words / total_words
 
@@ -102,11 +125,11 @@ def syllabify(data_test, n, prob_args, state_elim=True, validation=True, verbose
             'total_words': total_words,
             'wrong_words': wrong_words,
             'correct_words': total_words - wrong_words,
-            'word_error_rate': round(word_error_rate, 5),
+            'word_error_rate': round(word_error_rate, 8),
             'total_syllables': total_syllables,
             'wrong_syllables': wrong_syllables,
             'correct_syllables': total_syllables - wrong_syllables,
-            'syllable_error_rate': round(syllable_error_rate, 5),
+            'syllable_error_rate': round(syllable_error_rate, 8),
             'start_time': time.strftime('%Y/%m/%d - %H:%M:%S', time.localtime(start_t)),
             'end_time': time.strftime('%Y/%m/%d - %H:%M:%S', time.localtime(end_t)),
             'duration': round(end_t - start_t, 2)
@@ -116,28 +139,32 @@ def syllabify(data_test, n, prob_args, state_elim=True, validation=True, verbose
 
 '''
 Desc: Save syllabification result to a file
-In  : result_data (pd.DataFrame), fname (str), folder (str), with_timestamp (bool)
+In  : result_data (pd.DataFrame), fpath (str)
 '''
-def save_result(result_data, fname='', folder='./', with_timestamp=True):
-    timestamp = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + '_' if with_timestamp else ''
-    path = '{}{}{}'.format(folder, timestamp, fname)
-
+def save_result(result_data, fname, fdir, timestamp=True):
+    fpath = f"{fdir}/"
+    
+    if timestamp:
+        fpath += f"{util.get_current_timestamp()}_"
+    
+    fpath += f"{fname}.txt"
+    
     result_data.to_csv(
-        path, 
+        fpath, 
         sep='\t', 
-        index=False, 
+        index=False,
         header=False
     )
 
 
 '''
 Desc: Load syllabification result from a file
-In  : fname (str), folder (str)
+In  : fpath (str)
 Out : dict
 '''
-def load_result(fname, folder='./'):
+def load_result(fpath):
     columns = ['word', 'syllables', 'prediction', 'mismatch_count']
-    data = pd.read_csv('{}{}'.format(folder, fname), sep='\t', header=None, names=columns, na_filter=False)
+    data = pd.read_csv(fpath, sep='\t', header=None, names=columns, na_filter=False)
     
     total_words = len(data)
     wrong_words = 0
