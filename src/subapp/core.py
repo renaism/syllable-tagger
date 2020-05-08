@@ -171,11 +171,8 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
         result_log['overall']['end_time'] = time.strftime('%Y/%m/%d - %H:%M:%S', time.localtime(end_t))
         result_log['overall']['duration'] = round(end_t - start_t, 2)
 
-        log_fpath = util.save_dict_to_log(result_log, f"log_{fname}", "./logs/")
+        os.makedirs(f"{output_fdir}/logs", exist_ok=True)
+        log_fpath = util.save_dict_to_log(result_log, f"log_{fname}", f"{output_fdir}/logs/")
         print(f'Log saved to "{log_fpath}"')
     
     print("DONE in {:.2f} s".format(end_t - start_t))
-
-
-
-    

@@ -1,23 +1,22 @@
 import tkinter as tk
+import style
 from tkinter.filedialog import askopenfilenames, askdirectory
 from tkinter.scrolledtext import ScrolledText
 
-class FileList(tk.Frame):
+class FileList(tk.LabelFrame):
     def __init__(self, master, title, file_list, file_types):
-        super().__init__(master)
+        super().__init__(master, text=title)
         self.columnconfigure(0, weight=1)
-
-        tk.Label(self, text=title).grid(row=0, column=0, sticky="nw")
 
         self.file_list = file_list
         self.file_types = file_types
         self.update_listing()
 
         self.frm_btn_container = tk.Frame(self)
-        self.frm_btn_container.grid(row=2, column=0, sticky="nw")
+        self.frm_btn_container.grid(row=1, column=0, sticky="nw", pady=style.ELEMENT_PADDING)
 
-        tk.Button(self.frm_btn_container, text="Add File(s)", command=self.add_files).grid(row=0, column=0)
-        tk.Button(self.frm_btn_container, text="Remove All", command=self.remove_all_file).grid(row=0, column=1)
+        tk.Button(self.frm_btn_container, text="Add File(s)", command=self.add_files).grid(row=0, column=0, padx=style.ELEMENT_PADDING)
+        tk.Button(self.frm_btn_container, text="Remove All", command=self.remove_all_file).grid(row=0, column=1, padx=style.ELEMENT_PADDING)
     
 
     def update_listing(self, init=False):
@@ -25,16 +24,17 @@ class FileList(tk.Frame):
             self.frm_listing.destroy()
         
         self.frm_listing = tk.Frame(self)
-        self.frm_listing.grid(row=1, column=0, sticky="new")
+        self.frm_listing.grid(row=0, column=0, sticky="new")
         self.frm_listing.columnconfigure(1, weight=1)
         
         for i, fpath in enumerate(self.file_list):
             tk.Label(self.frm_listing, text=f"{i+1}.").grid(row=i, column=0, sticky="nw")
 
             ent_fpath = tk.Entry(self.frm_listing)
-            ent_fpath.grid(row=i, column=1, sticky="new")
+            ent_fpath.grid(row=i, column=1, sticky="nsew")
             ent_fpath.insert(0, fpath)
             ent_fpath.xview(tk.END)
+            ent_fpath.config(state="readonly")
 
             tk.Button(self.frm_listing, text="\u274C", command=lambda x=i : self.remove_file(x)).grid(row=i, column=2, sticky="ne")
     
@@ -66,12 +66,12 @@ class FileOutput(tk.Frame):
         tk.Label(self, text=title).grid(row=0, column=0, columnspan=2, sticky="nw")
 
         tk.Label(self, text="File name:").grid(row=1, column=0, sticky="w")
-        tk.Entry(self, textvariable=fname).grid(row=1, column=1, sticky="nsew")
-        tk.Button(self, text="Auto", command=auto_func).grid(row=1, column=2, sticky="nsew")
+        tk.Entry(self, textvariable=fname).grid(row=1, column=1, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
+        tk.Button(self, text="Auto", command=auto_func).grid(row=1, column=2, sticky="nsew", pady=style.ELEMENT_PADDING)
 
         tk.Label(self, text="Directory:").grid(row=2, column=0, sticky="w")
-        tk.Entry(self, textvariable=fdir).grid(row=2, column=1, sticky="nsew")
-        tk.Button(self, text="Browse", command=self.browse_fdir).grid(row=2, column=2, sticky="nsew")
+        tk.Entry(self, textvariable=fdir).grid(row=2, column=1, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
+        tk.Button(self, text="Browse", command=self.browse_fdir).grid(row=2, column=2, sticky="nsew", pady=style.ELEMENT_PADDING)
     
 
     def browse_fdir(self):

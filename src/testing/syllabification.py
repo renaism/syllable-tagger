@@ -1,7 +1,6 @@
 import time
 import sys
 import pandas as pd
-import numpy as np
 import testing.tagger as tagger
 import testing.probability as probability
 import utility as util

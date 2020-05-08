@@ -5,6 +5,8 @@ import style
 from subapp.training import Training
 from subapp.testing import Testing
 
+VERSION = "0.1a"
+
 class App(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
@@ -40,6 +42,6 @@ class App(tk.Frame):
 if __name__ == "__main__":
     # Main window configuration
     root = tk.Tk()
-    root.title("Indonesian Syllable Tagger")
+    root.title(f"Indonesian Syllable Tagger v{VERSION}")
     app = App(root)
     app.mainloop()

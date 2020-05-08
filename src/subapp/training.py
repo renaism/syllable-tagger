@@ -33,7 +33,7 @@ class Training(tk.Frame):
 
     def sidebar(self):
         self.frm_sidebar = tk.LabelFrame(self, text="Params")
-        self.frm_sidebar.grid(row=0, column=0, sticky="nsew")
+        self.frm_sidebar.grid(row=0, column=0, sticky="nsew", padx=style.SECTION_PADDING, pady=style.SECTION_PADDING)
 
         tk.Label(self.frm_sidebar, text="Maximum n").grid(row=1, column=0, sticky="nw")
 
@@ -55,7 +55,7 @@ class Training(tk.Frame):
     
     def main(self):
         self.frm_main = tk.Frame(self)
-        self.frm_main.grid(row=0, column=1, sticky="nsew")
+        self.frm_main.grid(row=0, column=1, sticky="nsew", padx=style.SECTION_PADDING, pady=style.SECTION_PADDING)
         self.frm_main.rowconfigure(1, weight=1)
         self.frm_main.columnconfigure(0, weight=1)
 
@@ -80,7 +80,7 @@ class Training(tk.Frame):
 
         # Operation buttons
         self.frm_op_btn_container = tk.Frame(self.frm_main)
-        self.frm_op_btn_container.grid(row=3, column=0, sticky="e")
+        self.frm_op_btn_container.grid(row=3, column=0, sticky="e", pady=style.ELEMENT_PADDING)
 
         self.btn_start = tk.Button(self.frm_op_btn_container, text="Start", command=self.btn_start_click)
         self.btn_start.grid(row=0, column=1, sticky="e")
@@ -91,7 +91,7 @@ class Training(tk.Frame):
 
     def status_bar(self):
         self.status_bar = StatusBar(self)
-        self.status_bar.grid(row=1, column=0, columnspan=2, sticky="nsew")
+        self.status_bar.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=style.SECTION_PADDING, pady=style.SECTION_PADDING)
         self.status_bar.write("Ready\n")
     
 

@@ -42,7 +42,7 @@ class Testing(tk.Frame):
 
     def sidebar(self):
         self.frm_sidebar = tk.LabelFrame(self, text="Params")
-        self.frm_sidebar.grid(row=0, column=0, sticky="nsew")
+        self.frm_sidebar.grid(row=0, column=0, sticky="nsew", padx=style.SECTION_PADDING, pady=style.SECTION_PADDING)
 
         # Main params
         tk.Label(self.frm_sidebar, text="n").grid(row=0, column=0, sticky="nw")
@@ -82,7 +82,7 @@ class Testing(tk.Frame):
         self.cbx_smoothing.grid(columnspan=2, sticky="new")
 
         self.frm_smoothing_params = tk.Frame(self.frm_sidebar)
-        self.frm_smoothing_params.grid(columnspan=2, sticky="new")
+        self.frm_smoothing_params.grid(columnspan=2, sticky="new", pady=style.ELEMENT_PADDING)
         self.frm_smoothing_params.columnconfigure(0, weight=1)
 
         self.frm_smoothings = {}
@@ -143,8 +143,8 @@ class Testing(tk.Frame):
 
     def main(self):
         self.frm_main = tk.Frame(self)
-        self.frm_main.grid(row=0, column=1, sticky="nsew")
-        self.frm_main.rowconfigure(1, weight=1)
+        self.frm_main.grid(row=0, column=1, sticky="nsew", padx=style.SECTION_PADDING, pady=style.SECTION_PADDING)
+        self.frm_main.rowconfigure(2, weight=1)
         self.frm_main.columnconfigure([0, 1], weight=1)
 
         # Test file area
@@ -154,7 +154,7 @@ class Testing(tk.Frame):
             file_list=self.test_files,
             file_types=[("Text Files", "*.txt"), ("CSV Files", "*.csv"), ("All Files", "*")]
         )
-        self.frm_test_file.grid(row=0, column=0, sticky="nsew")
+        self.frm_test_file.grid(row=0, column=0, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
         
         # n-gram file area
         self.frm_ngram_file = FileList(
@@ -163,7 +163,7 @@ class Testing(tk.Frame):
             file_list=self.ngram_files,
             file_types=[("JSON Files", "*.json"), ("All Files", "*")]
         )
-        self.frm_ngram_file.grid(row=0, column=1, sticky="nsew")
+        self.frm_ngram_file.grid(row=0, column=1, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
         
         # Augmented n-gram file area
         self.frm_ngram_aug_file = FileList(
@@ -185,7 +185,7 @@ class Testing(tk.Frame):
 
         # Operatiom buttons
         self.frm_op_btn_container = tk.Frame(self.frm_main)
-        self.frm_op_btn_container.grid(row=3, column=0, columnspan=2, sticky="e")
+        self.frm_op_btn_container.grid(row=3, column=0, columnspan=2, sticky="e", pady=style.ELEMENT_PADDING)
 
         self.btn_start = tk.Button(self.frm_op_btn_container, text="Start", command=self.btn_start_click)
         self.btn_start.grid(row=0, column=1, sticky="e")
@@ -196,13 +196,13 @@ class Testing(tk.Frame):
 
     def status_bar(self):
         self.status_bar = StatusBar(self)
-        self.status_bar.grid(row=1, column=0, columnspan=2, sticky="nsew")
+        self.status_bar.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=style.SECTION_PADDING, pady=style.SECTION_PADDING)
         self.status_bar.write("Ready\n")
     
 
     def toggle_augmentation(self):
         if self.var_augmentation.get():
-            self.frm_ngram_aug_file.grid(row=1, column=1, sticky="nsew")
+            self.frm_ngram_aug_file.grid(row=1, column=1, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
             self.frm_aug_params.grid(row=2, columnspan=2, sticky="new")
         else:
             self.frm_ngram_aug_file.grid_remove()
@@ -229,6 +229,9 @@ class Testing(tk.Frame):
             fname += f"_D={self.var_kn_d.get()}"
         elif self.var_smoothing.get() == "Stupid Backoff":
             fname += f"_a={self.var_sb_alpha.get()}"
+        
+        if self.var_augmentation.get():
+            fname += f"_aug_w={self.var_aug_w.get()}"
 
         self.var_output_fname.set(fname)
 
@@ -273,16 +276,17 @@ class Testing(tk.Frame):
             self.status_bar.write("[!] Number of test file and augmented n-gram file does not match.\n")
             valid = False
         
-        if self.var_output_fname.get() == '':
-            self.status_bar.write("[!] File name can not be empty.\n")
-            valid = False
-        
-        if self.var_output_fdir.get() == '':
-            self.status_bar.write("[!] Directory is not selected yet.\n")
-            valid = False
-        elif not os.path.isdir(self.var_output_fdir.get()):
-            self.status_bar.write("[!] Directory is not exists/valid.\n")
-            valid = False
+        if self.var_save_log.get() or self.var_save_result.get():
+            if self.var_output_fname.get() == '':
+                self.status_bar.write("[!] File name can not be empty.\n")
+                valid = False
+            
+            if self.var_output_fdir.get() == '':
+                self.status_bar.write("[!] Directory is not selected yet.\n")
+                valid = False
+            elif not os.path.isdir(self.var_output_fdir.get()):
+                self.status_bar.write("[!] Directory is not exists/valid.\n")
+                valid = False
         
         self.status_bar.write("\n")
         
