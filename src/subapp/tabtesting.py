@@ -71,7 +71,7 @@ class TabTesting(Tab):
         self.ent_aug_w = tk.Entry(self.frm_aug_params, textvariable=self.var_aug_w, width=style.DIGIT_ENTRY_WIDTH)
         self.ent_aug_w.grid(row=0, column=1, stick="ne")
 
-        tk.Label(self.frm_sidebar, text="Smoothing").grid(row=3, columnspan=2, sticky="nw")
+        tk.Label(self.frm_sidebar, text="Smoothing").grid(row=5, columnspan=2, sticky="nw")
         
         self.var_smoothing = tk.StringVar()
         self.cbx_smoothing = ttk.Combobox(
@@ -207,7 +207,7 @@ class TabTesting(Tab):
     def toggle_augmentation(self):
         if self.var_augmentation.get():
             self.frm_ngram_aug_file.grid(row=1, column=1, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
-            self.frm_aug_params.grid(row=2, columnspan=2, sticky="new")
+            self.frm_aug_params.grid(row=4, columnspan=2, sticky="new")
         else:
             self.frm_ngram_aug_file.grid_remove()
             self.frm_aug_params.grid_remove()
