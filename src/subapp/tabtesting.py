@@ -1,3 +1,5 @@
+from subapp.tab import Tab
+
 import sys
 import os.path
 import threading
@@ -16,10 +18,10 @@ SMOOTHING_METHOD_KEY = {
     "Stupid Backoff": "stupid_backoff"
 } 
 
-class Testing(tk.Frame):
+class TabTesting(Tab):
     def __init__(self, master):
         super().__init__(master)
-        self.master = master
+
         self.test_files = []
         self.ngram_files = []
         self.ngram_aug_files = []
@@ -27,17 +29,9 @@ class Testing(tk.Frame):
         self.var_output_fname = tk.StringVar()
         self.var_output_fdir = tk.StringVar()
 
-        self.grid_configure()
         self.sidebar()
         self.main()
-        self.status_bar()
-    
-
-    def grid_configure(self):
-        self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, minsize=style.STATUS_HEIGHT)
-        self.columnconfigure(0, minsize=style.SIDEBAR_WIDTH)
-        self.columnconfigure(1, weight=1)
+        #self.status_bar()
     
 
     def sidebar(self):
@@ -50,12 +44,22 @@ class Testing(tk.Frame):
         self.var_n = tk.IntVar()
         self.var_n.set(5)
         self.sbx_n = tk.Spinbox(self.frm_sidebar, textvariable=self.var_n, from_=1, to=10, width=style.DIGIT_ENTRY_WIDTH)
-        self.sbx_n.grid(row=0, column=1, sticky="ne") 
+        self.sbx_n.grid(row=0, column=1, sticky="ne")
+        
+        self.var_lower_case = tk.BooleanVar()
+        self.var_lower_case.set(True)
+        self.cbt_lower_case = tk.Checkbutton(self.frm_sidebar, variable=self.var_lower_case, text="Ensure lower case")
+        self.cbt_lower_case.grid(sticky="nw") 
+
+        self.var_state_elim = tk.BooleanVar()
+        self.var_state_elim.set(True)
+        self.cbt_state_elim = tk.Checkbutton(self.frm_sidebar, variable=self.var_state_elim, text="State-elimination")
+        self.cbt_state_elim.grid(columnspan=2, sticky="nw")
 
         self.var_augmentation = tk.BooleanVar()
         self.var_augmentation.set(False)
-        self.cbt_var_augmentation = tk.Checkbutton(self.frm_sidebar, variable=self.var_augmentation, command=self.toggle_augmentation, text="Augmented n-gram")
-        self.cbt_var_augmentation.grid(columnspan=2, sticky="nw")
+        self.cbt_augmentation = tk.Checkbutton(self.frm_sidebar, variable=self.var_augmentation, command=self.toggle_augmentation, text="Augmented n-gram")
+        self.cbt_augmentation.grid(columnspan=2, sticky="nw")
 
         self.frm_aug_params = tk.Frame(self.frm_sidebar)
         self.frm_aug_params.columnconfigure(1, weight=1)
@@ -154,7 +158,7 @@ class Testing(tk.Frame):
             file_list=self.test_files,
             file_types=[("Text Files", "*.txt"), ("CSV Files", "*.csv"), ("All Files", "*")]
         )
-        self.frm_test_file.grid(row=0, column=0, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
+        self.frm_test_file.grid(row=0, column=0, sticky="nsew")
         
         # n-gram file area
         self.frm_ngram_file = FileList(
@@ -163,7 +167,7 @@ class Testing(tk.Frame):
             file_list=self.ngram_files,
             file_types=[("JSON Files", "*.json"), ("All Files", "*")]
         )
-        self.frm_ngram_file.grid(row=0, column=1, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
+        self.frm_ngram_file.grid(row=0, column=1, sticky="nsew")
         
         # Augmented n-gram file area
         self.frm_ngram_aug_file = FileList(
@@ -187,10 +191,10 @@ class Testing(tk.Frame):
         self.frm_op_btn_container = tk.Frame(self.frm_main)
         self.frm_op_btn_container.grid(row=3, column=0, columnspan=2, sticky="e", pady=style.ELEMENT_PADDING)
 
-        self.btn_start = tk.Button(self.frm_op_btn_container, text="Start", command=self.btn_start_click)
+        self.btn_start = tk.Button(self.frm_op_btn_container, width=style.BUTTON_WIDTH, text="Start", command=self.btn_start_click)
         self.btn_start.grid(row=0, column=1, sticky="e")
 
-        self.btn_cancel = tk.Button(self.frm_op_btn_container, text="Cancel", state=tk.DISABLED)
+        self.btn_cancel = tk.Button(self.frm_op_btn_container, width=style.BUTTON_WIDTH, text="Cancel", state=tk.DISABLED)
         #self.btn_cancel.grid(row=0, column=0, sticky="e")
     
 
@@ -313,23 +317,28 @@ class Testing(tk.Frame):
         if self.var_smoothing.get() == "GKN":
             prob_args["d_ceil"] = self.var_gkn_b.get()
         elif self.var_smoothing.get() == "KN":
-            prob_args["d_ceil"] = float(self.var_kn_d.get())
+            prob_args["d"] = float(self.var_kn_d.get())
         elif self.var_smoothing.get() == "Stupid Backoff":
             prob_args["alpha"] = float(self.var_sb_alpha.get())
 
-        syllabify_folds(
-            data_test_fnames=self.test_files,
-            n_gram_fnames=self.ngram_files,
-            n=self.var_n.get(),
-            prob_args=prob_args,
-            n_gram_aug_fnames=self.ngram_aug_files,
-            output_fname=self.var_output_fname.get(),
-            output_fdir=self.var_output_fdir.get(),
-            validation=self.var_validation.get(),
-            save_log=self.var_save_log.get(),
-            save_result_=self.var_save_result.get(),
-            timestamp=self.var_timestamp.get()
-        )
+        try:
+            syllabify_folds(
+                data_test_fnames=self.test_files,
+                n_gram_fnames=self.ngram_files,
+                n=self.var_n.get(),
+                prob_args=prob_args,
+                n_gram_aug_fnames=self.ngram_aug_files,
+                lower_case=self.var_lower_case.get(),
+                output_fname=self.var_output_fname.get(),
+                output_fdir=self.var_output_fdir.get(),
+                state_elim=self.var_state_elim.get(),
+                validation=self.var_validation.get(),
+                save_log=self.var_save_log.get(),
+                save_result_=self.var_save_result.get(),
+                timestamp=self.var_timestamp.get()
+            )
+        except Exception as e:
+            print(f"Error:\n{e}")
 
         sys.stdout = old_stdout
 

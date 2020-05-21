@@ -1,5 +1,7 @@
 import tkinter as tk
 import style
+import utility as util
+
 from tkinter.filedialog import askopenfilenames, askdirectory
 from tkinter.scrolledtext import ScrolledText
 
@@ -67,11 +69,11 @@ class FileOutput(tk.Frame):
 
         tk.Label(self, text="File name:").grid(row=1, column=0, sticky="w")
         tk.Entry(self, textvariable=fname).grid(row=1, column=1, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
-        tk.Button(self, text="Auto", command=auto_func).grid(row=1, column=2, sticky="nsew", pady=style.ELEMENT_PADDING)
+        tk.Button(self, text="Auto", width=style.BUTTON_WIDTH, command=auto_func).grid(row=1, column=2, sticky="nsew", pady=style.ELEMENT_PADDING)
 
         tk.Label(self, text="Directory:").grid(row=2, column=0, sticky="w")
         tk.Entry(self, textvariable=fdir).grid(row=2, column=1, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
-        tk.Button(self, text="Browse", command=self.browse_fdir).grid(row=2, column=2, sticky="nsew", pady=style.ELEMENT_PADDING)
+        tk.Button(self, text="Browse", width=style.BUTTON_WIDTH, command=self.browse_fdir).grid(row=2, column=2, sticky="nsew", pady=style.ELEMENT_PADDING)
     
 
     def browse_fdir(self):
@@ -104,3 +106,36 @@ class StatusBar(tk.Frame):
         
         self.status_text.config(state=tk.DISABLED)
         self.status_text.see(tk.END)
+
+
+class ConfigText(tk.Frame):
+    def __init__(self, master, title, def_var, var):
+        super().__init__(master)
+        self.master = master
+        self.def_var = util.tags_to_str(def_var)
+        self.var = var
+
+        # List of vowels
+        tk.Label(self, text=title).grid(row=0, column=0, columnspan=2, sticky="nw")
+        
+        self.var_custom = tk.BooleanVar()
+        tk.Radiobutton(self, text="Default", variable=self.var_custom, value=False, command=self.toggle).grid(row=1, column=0, sticky="nw")
+        tk.Radiobutton(self, text="Custom", variable=self.var_custom, value=True, command=self.toggle).grid(row=1, column=1, sticky="nw")
+
+        self.ent_var = tk.Entry(self, textvariable=self.var, width=style.TEXT_ENTRY_WIDTH)
+        self.ent_var.grid(row=2, column=0, columnspan=2, sticky="nw")
+
+        self.toggle()
+
+
+    def toggle(self):
+        if self.var_custom.get():
+            self.ent_var.config(state=tk.NORMAL)
+        else:
+            self.var.set(self.def_var)
+            self.ent_var.config(state=tk.DISABLED)
+    
+
+    def check_default(self):
+        self.var_custom.set(self.var.get() != self.def_var)
+        self.toggle()

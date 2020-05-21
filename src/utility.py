@@ -8,31 +8,6 @@ class ContinuousPrint(object):
         self.time_interval = time_interval
         self.last_time = time.time() - time_interval
 
-'''
-Desc: Extract the onset, nucleus, and coda from a valid syllable
-In  : syllable (str)
-Out : tuple
-'''
-def extract_syllable(syllable):
-    # Onset, consonant prefix
-    ons_match = re.search(r'^[^aeiou]*', syllable)
-    # Nucleus, vocal or diphtong
-    nuc_match = re.search(r'[aeiou]+', syllable)
-    # Coda, consonant suffix
-    cod_match = re.search(r'[^aeiou]*$', syllable)
-
-    # Take care of edge cases (unusual syllables)
-    onset = ons_match.group()
-
-    if nuc_match != None:
-        nucleus = nuc_match.group()
-        coda    = cod_match.group()
-    else:
-        nucleus = ''
-        coda    = ''
-
-    return (onset, nucleus, coda)
-
 
 '''
 Desc: Combine list of syllables into a single word
@@ -93,30 +68,6 @@ Out : Tuple
 '''
 def str_to_tags(tags_str):
     return tuple(tags_str.split())
-
-
-'''
-Desc: Convert tagging result into syllable-segmented word
-In  : word (str), tag_sequence (list)
-Out : str
-'''
-def tags_to_segmented_word(word, tag_sequence):
-    segmented_word = ''
-    j = 0
-    N = len(word)
-
-    for i in range(N):
-        if word[i] == '-':
-            segmented_word += word[i]
-        else:
-            segmented_word += word[i]
-
-            if tag_sequence[j][1] == '*' and i < N-1 and word[i+1] != '-':
-                segmented_word += '.'
-            
-            j += 1
-        
-    return segmented_word
 
 
 '''

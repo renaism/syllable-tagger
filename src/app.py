@@ -2,10 +2,12 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import style
 
-from subapp.training import Training
-from subapp.testing import Testing
+from subapp.tabaugmentation import TabAugmentation
+from subapp.tabtraining import TabTraining
+from subapp.tabtesting import TabTesting
+from subapp.tabsettings import TabSettings
 
-VERSION = "0.1a"
+VERSION = "0.2a"
 
 class App(tk.Frame):
     def __init__(self, master):
@@ -24,13 +26,23 @@ class App(tk.Frame):
         self.tabs = ttk.Notebook(self)
         self.tabs.grid(row=0, column=0, sticky="nsew")
 
+        # Augmentation tab
+        self.tab_augmentation = TabAugmentation(self)
+        self.tabs.add(self.tab_augmentation, sticky="nsew", text="Augmentation")
+
         # Training tab
-        self.tab_train = Training(self)
+        self.tab_train = TabTraining(self)
         self.tabs.add(self.tab_train, sticky="nsew", text="Training")
 
         # Testing tab
-        self.tab_test = Testing(self)
+        self.tab_test = TabTesting(self)
         self.tabs.add(self.tab_test, sticky="nsew", text="Testing")
+
+        # Settings tab
+        self.tab_settings = TabSettings(self)
+        self.tabs.add(self.tab_settings, sticky="nsew", text="Settings")
+
+        self.tabs.select(1)
     
 
     def toggle_other_tabs(self, enabled):

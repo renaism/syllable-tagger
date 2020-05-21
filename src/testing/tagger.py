@@ -3,6 +3,8 @@ import numpy as np
 import utility as util
 import testing.probability as probability
 
+from config import *
+
 VOCAL_LETTERS = ['a', 'e', 'i', 'o', 'u']
 
 '''
@@ -11,7 +13,7 @@ In  : word (str), state_length (int)
 Out : list
 '''
 def generate_states(word, state_length):
-    initial_state = tuple('#' for _ in range(state_length))
+    initial_state = tuple(STARTPAD for _ in range(state_length))
     states = [initial_state]
     
     prev_start_index = 0
@@ -24,11 +26,11 @@ def generate_states(word, state_length):
             prev_start_index += 2**state_length // 2
         
         for j in range(prev_start_index, prev_end_index):
-            if i == n-1 and word[i] == '$':
+            if i == n-1 and word[i] == WORDEND:
                 states.append(states[j][1:] + (word[i],))
             else:
-                states.append(states[j][1:] + (word[i] + '!',))
-                states.append(states[j][1:] + (word[i] + '*',))
+                states.append(states[j][1:] + (word[i] + SYLMID,))
+                states.append(states[j][1:] + (word[i] + SYLEND,))
                 c += 2
         
         prev_start_index = prev_end_index
@@ -47,7 +49,7 @@ def eliminate_states(states):
 
     for state in states:
         # The last symbol of a word is always a syllable end
-        if len(state) >= 2 and state[-1] == '$' and state[-2][-1] != '*':
+        if len(state) >= 2 and state[-1] == WORDEND and state[-2][-1] != SYLEND:
             continue
         
         # Eliminate state that contains syllable structure of V!C!V! or V!C!V*
@@ -56,17 +58,17 @@ def eliminate_states(states):
             skip = False
 
             for i in range(1, len(state)):
-                if state[i][0] == '#' or state[i-1][0] == '#' or state[i][0] == '$':
+                if state[i][0] == STARTPAD or state[i-1][0] == STARTPAD or state[i][0] == WORDEND:
                     continue
 
                 if not flag:
                     # Set flag if found occurence of V!C!
-                    if state[i-1][0] in VOCAL_LETTERS and state[i-1][1] == '!':
-                        if state[i][0] not in VOCAL_LETTERS and state[i][1] == '!': 
+                    if state[i-1][0] in VOCAL_LETTERS and state[i-1][1] == SYLMID:
+                        if state[i][0] not in VOCAL_LETTERS and state[i][1] == SYLMID: 
                             flag = True
                 else:
                     # Reset flag if found C*
-                    if state[i][0] not in VOCAL_LETTERS and state[i][1] == '*':
+                    if state[i][0] not in VOCAL_LETTERS and state[i][1] == SYLEND:
                         flag = False
                     # Set to eliminate state if found V! or V* after V!C!
                     elif state[i][0] in VOCAL_LETTERS:
@@ -90,7 +92,7 @@ def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
     start_t = time.time()
     
     # Add end-marker to the word
-    word += '$'
+    word += WORDEND
     T = len(word)
 
     # Generate possible states
@@ -106,8 +108,8 @@ def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
 
     prob_calc = 0
     
-    # Initial state, consists of padding tags '#'
-    initial_state = tuple('#' for _ in range(n-1))
+    # Initial state, consists of padding tags STARTPAD
+    initial_state = tuple(STARTPAD for _ in range(n-1))
     
     # Starting log probabilities
     symbol = word[0]

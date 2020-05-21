@@ -27,6 +27,9 @@ def kn(tags, n_gram, d=0.75, highest_order=True):
         ckn      = n_gram.get_continuation_count(tags)
         ckn_prec = n_gram.get_continuation_count(tags_prec)
     
+    if count_prec == 0:
+        return kn(tags[1:], n_gram, d=d, highest_order=True)
+    
     # Normalizing constant (lambda)
     L = (d / max(count_prec, 1)) * max(n_gram.get_follow_count(tags_prec), 1)
     
@@ -174,7 +177,7 @@ def stupid_backoff(tags, n_gram, alpha=0.4, cache=None):
     n = len(tags)
 
     # Check the cache if the probability of the tags already exists
-    if cache != None and tags in cache[n]:
+    if cache != None and tags in cache['top'][n]:
         return cache['top'][n][tags]
 
     count = n_gram.get_count(tags)

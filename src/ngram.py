@@ -5,7 +5,7 @@ import json
 import time
 
 class NGram():
-    def __init__(self, tokens=None, n=2, build_cont_fdist=True, build_follow_fdist=False, verbose=False):
+    def __init__(self, tokens=None, n=2, build_cont_fdist=True, build_follow_fdist=True, verbose=False):
         if tokens != None:
             self.generate(tokens, n, build_cont_fdist, build_follow_fdist, verbose)
     
@@ -15,7 +15,7 @@ class NGram():
     In  : tokens(list), n (int)
     F.S.: NGram initialized with frequency and continuation frequency distributions of each nth-gram
     '''
-    def generate(self, tokens, n=2, build_cont_fdist=True, build_follow_fdist=False, verbose=False):
+    def generate(self, tokens, n=2, build_cont_fdist=True, build_follow_fdist=True, verbose=False):
         start_t = time.time()
         n_tokens = len(tokens)
         util.printv(verbose, 'Number of words: ', n_tokens)
@@ -181,7 +181,7 @@ class NGram():
         n = len(gram)
         assert n < self.n
         
-        return self.follow_fdist[n][gram]
+        return sum(self.follow_fdist[n][gram].values())
 
 
     '''
@@ -207,9 +207,7 @@ F.S.: n-gram saved in a file
 def save(ngram, fname, fdir):
     data = {
         'N': ngram.n,
-        'fdist': {},
-        'continuation_fdist': {},
-        'follow_fdist': {}
+        'fdist': {}
     }
     
     # Encode frequency distribution
@@ -220,24 +218,30 @@ def save(ngram, fname, fdir):
             data['fdist'][i][util.tags_to_str(k)] = v
     
     # Encode continuation frequency distribution
-    for i, cfd in ngram.continuation_fdist.items():
-        data['continuation_fdist'][i] = {}
+    if hasattr(ngram, 'continuation_fdist'):
+        data['continuation_fdist'] = {}
 
-        for k, v in cfd.items():
-            data['continuation_fdist'][i][util.tags_to_str(k)] = v
+        for i, cfd in ngram.continuation_fdist.items():
+            data['continuation_fdist'][i] = {}
+
+            for k, v in cfd.items():
+                data['continuation_fdist'][i][util.tags_to_str(k)] = v
     
     # Encode follow frequency distribution
-    for i, ffd in ngram.follow_fdist.items():
-        data['follow_fdist'][i] = {}
+    if hasattr(ngram, 'follow_fdist'):
+        data['follow_fdist'] = {}
 
-        for k, v in ffd.items():
-            data['follow_fdist'][i][util.tags_to_str(k)] = v
+        for i, ffd in ngram.follow_fdist.items():
+            data['follow_fdist'][i] = {}
+
+            for k, v in ffd.items():
+                data['follow_fdist'][i][util.tags_to_str(k)] = v
     
     # Write to file
     fpath = f"{fdir}/{fname}.json" 
 
-    with open(fpath, mode='w') as f:
-        f.write(json.dumps(data))
+    with open(fpath, mode='w', encoding='utf-8') as f:
+        f.write(json.dumps(data, ensure_ascii=False))
 
 
 '''
@@ -246,7 +250,7 @@ In  : fpath (str), n_max (int), load_cont_fdist (bool), load_follow_fdist (bool)
 Out : NGram
 '''
 def load(fpath, n_max=None, load_cont_fdist=True, load_follow_fdist=True):
-    with open(fpath) as f:
+    with open(fpath, encoding='utf-8') as f:
         data = json.loads(f.read())
 
     # n_max denotes max nth-gram loaded

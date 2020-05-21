@@ -1,4 +1,5 @@
 from nltk.util import pad_sequence
+from config import *
 
 '''
 Desc: Convert syllable-segmented text to tokens of tags
@@ -22,13 +23,13 @@ def tokenize(data_train):
                     continue
                 # Last char is always a syllable-end
                 if i == n-1:
-                    token = syl_sub_word[i] + '*'
+                    token = syl_sub_word[i] + SYLEND
                 # If next char is a syllable boundary
                 elif syl_sub_word[i+1] == '.':
-                    token = syl_sub_word[i] + '*'
+                    token = syl_sub_word[i] + SYLEND
                 # If next char is not syllable boundary
                 else:
-                    token = syl_sub_word[i] + '!'
+                    token = syl_sub_word[i] + SYLMID
                 word_tokens.append(token)
             
             tokens.append(word_tokens)
@@ -46,10 +47,10 @@ def pad_tokens(tokens, n, start_pad=True, end_marker=True):
     
     # Add front padding
     if start_pad:
-        padded_tokens = [list(pad_sequence(wt, n, pad_left=True, left_pad_symbol='#')) for wt in tokens]
+        padded_tokens = [list(pad_sequence(wt, n, pad_left=True, left_pad_symbol=STARTPAD)) for wt in tokens]
     
     # Add end marker
     if end_marker:
-        padded_tokens = [wt + ['$'] for wt in padded_tokens]
+        padded_tokens = [wt + [WORDEND] for wt in padded_tokens]
     
     return padded_tokens
