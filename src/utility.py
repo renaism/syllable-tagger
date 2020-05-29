@@ -3,10 +3,58 @@ import numpy as np
 import time
 import json
 
+from config import *
+
 class ContinuousPrint(object):
     def __init__(self, time_interval=1.0):
         self.time_interval = time_interval
         self.last_time = time.time() - time_interval
+
+
+'''
+Desc: Convert tagging result into syllable-segmented word
+In  : word (str), tag_sequence (list)
+Out : str
+'''
+def tags_to_segmented_word(word, tag_sequence):
+    segmented_word = ''
+    j = 0
+    N = len(word)
+
+    for i in range(N):
+        if word[i] == '-':
+            segmented_word += word[i]
+        else:
+            segmented_word += word[i]
+
+            if tag_sequence[j][1] == SYLEND and i < N-1 and word[i+1] != '-':
+                segmented_word += '.'
+            
+            j += 1
+        
+    return segmented_word
+
+
+def segmented_word_to_tags(segmented_word):
+    n = len(segmented_word)
+    word_tokens = []
+
+    for i in range(n):
+        # Skip if the current char is a syllable boundary
+        if segmented_word[i] == '.':
+            continue
+        # Last char is always a syllable-end
+        if i == n-1:
+            token = segmented_word[i] + SYLEND
+        # If next char is a syllable boundary
+        elif segmented_word[i+1] == '.':
+            token = segmented_word[i] + SYLEND
+        # If next char is not syllable boundary
+        else:
+            token = segmented_word[i] + SYLMID
+        word_tokens.append(token)
+    
+    return tuple(word_tokens)
 
 
 '''

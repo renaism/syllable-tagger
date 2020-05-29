@@ -2,6 +2,8 @@ import json
 import utility as util
 from nltk.probability import FreqDist
 
+from training.augmentation import flip_onsets_word, transpose_nucleus_word
+
 '''
 Desc: Get the probability of a tag sqeuence from an n-gram with kneser-ney smoothing
 In  : tags (tuple), n_gram (NGram), d (float), highest_order (bool)
@@ -244,11 +246,33 @@ Desc: Wrapper for _get_probability function
 In  : tags (tuple), args (dict)
 Out : float
 '''
-def get_probability(tags, args):
+def get_probability(tags, args, original_word=True):
     prob = _get_probability(tags, args)
-    
-    if 'with_aug' in args and args['with_aug']:
+
+    if "with_aug" in args and args["with_aug"]:
         prob += _get_probability(tags, args, aug=True)
+    
+    orig_prob = prob
+    
+    if original_word and args["can_aug_prob"]:
+        n = len(tags)
+        syl_word = util.tags_to_segmented_word(args["word"][:n], tags)
+
+        for method in args["aug_prob_methods"]:
+            if args["aug_prob_methods"][method]:
+                augmented_word = None
+
+                if method == "flip_onsets":
+                    augmented_word = flip_onsets_word(syl_word, vowels=args["vowels"], semi_vowels=args["semi_vowels"], diphtongs=args["diphtongs"])
+                
+                elif method == "transpose_nucleus":
+                    augmented_word = transpose_nucleus_word(syl_word, vowels=args["vowels"], semi_vowels=args["semi_vowels"], diphtongs=args["diphtongs"])
+
+                if augmented_word:
+                    augmented_tags = util.segmented_word_to_tags(augmented_word[1])
+                    prob += get_probability(augmented_tags, args, original_word=False)
+                else:
+                    prob += orig_prob
 
     return prob
 

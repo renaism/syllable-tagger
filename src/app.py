@@ -7,7 +7,7 @@ from subapp.tabtraining import TabTraining
 from subapp.tabtesting import TabTesting
 from subapp.tabsettings import TabSettings
 
-VERSION = "0.2a"
+VERSION = "0.3a"
 
 class App(tk.Frame):
     def __init__(self, master):
@@ -26,6 +26,10 @@ class App(tk.Frame):
         self.tabs = ttk.Notebook(self)
         self.tabs.grid(row=0, column=0, sticky="nsew")
 
+        # Settings tab
+        self.tab_settings = TabSettings(self)
+        self.tabs.add(self.tab_settings, sticky="nsew", text="Settings")
+
         # Augmentation tab
         self.tab_augmentation = TabAugmentation(self)
         self.tabs.add(self.tab_augmentation, sticky="nsew", text="Augmentation")
@@ -38,11 +42,7 @@ class App(tk.Frame):
         self.tab_test = TabTesting(self)
         self.tabs.add(self.tab_test, sticky="nsew", text="Testing")
 
-        # Settings tab
-        self.tab_settings = TabSettings(self)
-        self.tabs.add(self.tab_settings, sticky="nsew", text="Settings")
-
-        self.tabs.select(1)
+        self.tabs.select(0)
     
 
     def toggle_other_tabs(self, enabled):

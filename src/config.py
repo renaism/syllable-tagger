@@ -13,7 +13,7 @@ CONFIG_FNAME = "config.ini"
 
 VOWELS_DEFAULT = ["a", "e", "i", "o", "u"]
 SEMI_VOWELS_DEFAULT = ["y", "w"]
-DIPHTONGS_DEFAULT = ["ai", "au", "aw", "ay", "ei", "ey", "oi", "oy"]
+DIPHTONGS_DEFAULT = ["ai", "au", "ei", "oi", "ay", "aw", "ey", "oy"]
 
 def init_config():
     config = configparser.ConfigParser( 

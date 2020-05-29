@@ -1,6 +1,7 @@
 from subapp.tab import Tab
 
 import sys
+import traceback
 import os.path
 import threading
 import time
@@ -32,7 +33,6 @@ class TabAugmentation(Tab):
         self.frm_sidebar.grid(row=0, column=0, sticky="nsew", padx=style.SECTION_PADDING, pady=style.SECTION_PADDING)
 
         self.var_lower_case = tk.BooleanVar()
-        self.var_lower_case.set(True)
         self.cbt_lower_case = tk.Checkbutton(self.frm_sidebar, variable=self.var_lower_case, text="Ensure lower case")
         self.cbt_lower_case.grid(sticky="nw")
         
@@ -163,6 +163,7 @@ class TabAugmentation(Tab):
             )
         except Exception as e:
             print(f"Error:\n{e}")
+            print(traceback.format_exc())
 
         sys.stdout = old_stdout
 

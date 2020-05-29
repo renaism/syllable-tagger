@@ -1,6 +1,7 @@
 from subapp.tab import Tab
 
 import sys
+import traceback
 import os.path
 import threading
 import time
@@ -31,7 +32,9 @@ class TabTesting(Tab):
 
         self.sidebar()
         self.main()
-        #self.status_bar()
+        
+        self.toggle_augmentation()
+        self.toggle_aug_prob()
     
 
     def sidebar(self):
@@ -47,7 +50,6 @@ class TabTesting(Tab):
         self.sbx_n.grid(row=0, column=1, sticky="ne")
         
         self.var_lower_case = tk.BooleanVar()
-        self.var_lower_case.set(True)
         self.cbt_lower_case = tk.Checkbutton(self.frm_sidebar, variable=self.var_lower_case, text="Ensure lower case")
         self.cbt_lower_case.grid(sticky="nw") 
 
@@ -56,22 +58,41 @@ class TabTesting(Tab):
         self.cbt_state_elim = tk.Checkbutton(self.frm_sidebar, variable=self.var_state_elim, text="State-elimination")
         self.cbt_state_elim.grid(columnspan=2, sticky="nw")
 
+        # n-gram aug params
         self.var_augmentation = tk.BooleanVar()
-        self.var_augmentation.set(False)
         self.cbt_augmentation = tk.Checkbutton(self.frm_sidebar, variable=self.var_augmentation, command=self.toggle_augmentation, text="Augmented n-gram")
         self.cbt_augmentation.grid(columnspan=2, sticky="nw")
 
         self.frm_aug_params = tk.Frame(self.frm_sidebar)
         self.frm_aug_params.columnconfigure(1, weight=1)
+        self.frm_aug_params.grid(columnspan=2, sticky="new")
         
         tk.Label(self.frm_aug_params, text="Aug. weight").grid(row=0, column=0, sticky="nw")
-        
+
         self.var_aug_w = tk.StringVar()
         self.var_aug_w.set(0.1)
         self.ent_aug_w = tk.Entry(self.frm_aug_params, textvariable=self.var_aug_w, width=style.DIGIT_ENTRY_WIDTH)
         self.ent_aug_w.grid(row=0, column=1, stick="ne")
 
-        tk.Label(self.frm_sidebar, text="Smoothing").grid(row=5, columnspan=2, sticky="nw")
+        # Augmented probabiliy params
+        self.var_aug_prob = tk.BooleanVar()
+        self.cbt_aug_prob = tk.Checkbutton(self.frm_sidebar, variable=self.var_aug_prob, command=self.toggle_aug_prob, text="Augmented probability")
+        self.cbt_aug_prob.grid(columnspan=2, sticky="nw")
+
+        self.frm_aug_prob = tk.Frame(self.frm_sidebar)
+        self.frm_aug_prob.columnconfigure(1, weight=1)
+        self.frm_aug_prob.grid(columnspan=2, sticky="new")
+
+        self.var_aug_prob_flip = tk.BooleanVar()
+        self.cbt_augmentation = tk.Checkbutton(self.frm_aug_prob, variable=self.var_aug_prob_flip, text="Flipped onsets")
+        self.cbt_augmentation.grid(columnspan=2, sticky="nw")
+
+        self.var_aug_prob_transpose = tk.BooleanVar()
+        self.cbt_augmentation = tk.Checkbutton(self.frm_aug_prob, variable=self.var_aug_prob_transpose, text="Transposed nucleus")
+        self.cbt_augmentation.grid(columnspan=2, sticky="nw")
+
+        # Smoothing params
+        tk.Label(self.frm_sidebar, text="Smoothing").grid(columnspan=2, sticky="nw")
         
         self.var_smoothing = tk.StringVar()
         self.cbx_smoothing = ttk.Combobox(
@@ -213,6 +234,13 @@ class TabTesting(Tab):
             self.frm_aug_params.grid_remove()
     
 
+    def toggle_aug_prob(self):
+        if self.var_aug_prob.get():
+            self.frm_aug_prob.grid(row=6, columnspan=2, sticky="new")
+        else:
+            self.frm_aug_prob.grid_remove()
+    
+
     def cbx_smoothing_changed(self, event):
         smoothing = self.cbx_smoothing.get()
 
@@ -308,7 +336,12 @@ class TabTesting(Tab):
 
         prob_args= {
             "method": SMOOTHING_METHOD_KEY[self.var_smoothing.get()],
-            "with_aug": self.var_augmentation.get()
+            "with_aug": self.var_augmentation.get(),
+            "aug_prob": self.var_aug_prob.get(),
+            "aug_prob_methods": {
+                "flip_onsets": self.var_aug_prob_flip.get(),
+                "transpose_nucleus": self.var_aug_prob_transpose.get()
+            }
         }
 
         if self.var_augmentation.get():
@@ -339,6 +372,7 @@ class TabTesting(Tab):
             )
         except Exception as e:
             print(f"Error:\n{e}")
+            print(traceback.format_exc())
 
         sys.stdout = old_stdout
 

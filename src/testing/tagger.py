@@ -4,6 +4,7 @@ import utility as util
 import testing.probability as probability
 
 from config import *
+from training.augmentation import flip_onsets_word, transpose_nucleus_word
 
 VOCAL_LETTERS = ['a', 'e', 'i', 'o', 'u']
 
@@ -37,6 +38,32 @@ def generate_states(word, state_length):
         prev_end_index += c
 
     return list(set(states))
+
+
+def generate_possible_syllabifications(word):
+    n = 2**len(word)
+
+    # Create a binary syl mid(0)/end(1) map
+    bin_format ='0{}b'.format(len(bin(n-1)[2:]))
+    syl_map = []
+
+    for i in range(n):
+        bin_i = [int(x) for x in format(i, bin_format)]
+
+        # Only insert binary that ends with 1 (syl end)
+        if bin_i[-1] == 1:
+            syl_map.append(bin_i)
+    
+    for sm_row in syl_map:
+        tag_sequence = []
+
+        for i, syl in enumerate(sm_row):
+            tag = SYLMID if syl == 0 else SYLEND
+            tag_sequence.append(f"{word[i]}{tag}")
+        
+        syl_word = util.tags_to_segmented_word(word, tag_sequence)
+
+        print(syl_word)
 
 
 '''
@@ -91,12 +118,17 @@ Out : list
 def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
     start_t = time.time()
     
+    prob_args["word"] = word
+
     # Add end-marker to the word
     word += WORDEND
     T = len(word)
 
     # Generate possible states
     states = generate_states(word, n-1)
+
+    #if "aug_prob_fl" in prob_args and prob_args["aug_prob_fl"]:
+    #    pass
 
     # Eliminate invalid states
     if state_elim:
@@ -115,6 +147,7 @@ def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
     symbol = word[0]
     util.printv(verbose, 'Current symbol:', symbol)
     traversed_states = set()
+    prob_args["can_aug_prob"] = False
 
     for i, state in enumerate(states):
         # Skip the state if it's doesn't match with the initial state or current symbol
@@ -137,6 +170,11 @@ def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
         
         prev_states = traversed_states
         traversed_states = set()
+
+        if t == n-1 and t < T-1 and "aug_prob" in prob_args and prob_args["aug_prob"]:
+            prob_args["can_aug_prob"] = True
+        else:
+            prob_args["can_aug_prob"] = False
         
         for j, state in  enumerate(states):
             # Skip the state if the end tag doesn't match with the current symbol

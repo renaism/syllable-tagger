@@ -7,29 +7,6 @@ import utility as util
 
 from config import *
 
-'''
-Desc: Convert tagging result into syllable-segmented word
-In  : word (str), tag_sequence (list)
-Out : str
-'''
-def tags_to_segmented_word(word, tag_sequence):
-    segmented_word = ''
-    j = 0
-    N = len(word)
-
-    for i in range(N):
-        if word[i] == '-':
-            segmented_word += word[i]
-        else:
-            segmented_word += word[i]
-
-            if tag_sequence[j][1] == SYLEND and i < N-1 and word[i+1] != '-':
-                segmented_word += '.'
-            
-            j += 1
-        
-    return segmented_word
-
 
 '''
 Desc: Count the number of wrong syllables from the prediction compared to the true syllables
@@ -105,7 +82,7 @@ def syllabify(data_test, n, prob_args, state_elim=True, validation=True, verbose
 
         # Tag the letters of the word
         tag_sequence = tagger.tag_word(row.word, n, prob_args, state_elim=state_elim)
-        syl_pred = tags_to_segmented_word(row.word, tag_sequence)
+        syl_pred = util.tags_to_segmented_word(row.word, tag_sequence)
         syl_preds.append(syl_pred)
 
         # Compare the real and predicted syllables and count the differences

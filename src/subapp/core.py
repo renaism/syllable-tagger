@@ -149,6 +149,12 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
                 load_follow_fdist=True, 
                 load_cont_fdist=True
             )
+        
+        if prob_args["aug_prob"]:
+            config = load_config() 
+            prob_args["vowels"] = list(util.str_to_tags(config["SYMBOLS"]["vowels"]))
+            prob_args["semi_vowels"] = list(util.str_to_tags(config["SYMBOLS"]["semi_vowels"]))
+            prob_args["diphtongs"] = list(util.str_to_tags(config["SYMBOLS"]["diphtongs"]))
     
         result = syllabify(data_test, n, prob_args, state_elim=state_elim, validation=validation)
 
@@ -187,7 +193,7 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
         result_log['overall']['duration'] = round(end_t - start_t, 2)
 
         os.makedirs(f"{output_fdir}/logs", exist_ok=True)
-        log_fpath = util.save_dict_to_log(result_log, f"log_{fname}", f"{output_fdir}/logs/")
+        log_fpath = util.save_dict_to_log(result_log, f"log_{output_fname}", f"{output_fdir}/logs/")
         print(f'Log saved to "{log_fpath}"')
     
     print("DONE in {:.2f} s".format(end_t - start_t))
