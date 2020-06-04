@@ -77,7 +77,10 @@ Pengaturan parameter ada di sidebar "Params" pada bagian kiri aplikasi. Berikut 
 - `Ensure lower case`: Mengubah teks pada data test menjadi huruf kecil semua sebelum diproses.
 - `State-elimination`: Opsi untuk menggunakan metode state-elimination pada proses tagging.
 - `Augmented n-gram`: Opsi untuk menggunakan n-gram tambahan hasil augmentasi. Jika aktif, maka perlu memilih dua set file model n-gram untuk setiap data test.
-- `Aug. weight`: Bobot dari n-gram augmentasi pada perhitungan probabilitas jika menggunakan `Augmented n-gram`
+- `Aug. weight`: Bobot dari n-gram augmentasi pada perhitungan probabilitas jika menggunakan `Augmented n-gram`.
+- `Augmented probability`: Opsi untuk menggunakan augmented probability.
+- `Flipped onsets`: Menggunakan probabilitas dari kata yang di-flip onsetnya dalam perhitungan probabilitas jika menggunakan `Augmented probability`.
+- `Transposed nucleus`: Menggunakan probabilitas dari kata yang di-transpose nucleusnya dalam perhitungan probabilitas jika menggunakan `Augmented probability`.
 - `Smoothing`: Metode smoothing yang digunakan dalam perhitungan probabilitas. Terdapat tiga opsi: `GKN` (Generalized Kneser-Ney), `KN` (Kneser-Ney) dan `Stupid Backoff`. `GKN` mempunyai performa paling bagus tetapi lebih lambat dari dua opsi lainnya.
 - `B` (Parameter `GKN`): Jumlah parameter diskon yang digunakan.
 - `D` (Parameter `KN`): Nilai diskon yang digunakan.
