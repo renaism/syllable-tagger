@@ -5,9 +5,10 @@ import re
 import ngram
 import utility as util
 
-from training.preprocess import tokenize, pad_tokens
+from training.preprocess import tokenize, tokenize_g2p, pad_tokens
 from training.augmentation import flip_onsets, swap_consonants, transpose_nucleus
 from testing.syllabification import syllabify, save_result
+from testing.stemmer import Stemmer
 
 from config import *
 
@@ -37,12 +38,13 @@ def get_folds_from_fnames(fnames):
         None
 
 
-def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=True, build_cont_fdist=True, build_follow_fdist=True):
+def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=True, build_cont_fdist=True, build_follow_fdist=True, mode="syl"):
     start_t = time.time()
 
     fold_list = get_folds_from_fnames(data_train_fnames)
     fold_mode = fold_list is not None
 
+    print(f"Mode: {mode}\n")
     print(f"Fold mode: {fold_mode}\n")
 
     for i in range(len(data_train_fnames)):
@@ -69,8 +71,14 @@ def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=
             data_train["syllables"] = data_train["syllables"].str.lower()
 
         # Build the n-gram
-        tokens = pad_tokens(tokenize(data_train), n=n_max, start_pad=True, end_marker=True)
-        ngram_fold = ngram.NGram(tokens, n=n_max, build_cont_fdist=build_cont_fdist, build_follow_fdist=build_follow_fdist, verbose=True)
+        if mode == "syl":
+            tokens = pad_tokens(tokenize(data_train), n=n_max, start_pad=True, end_marker=True)
+            build_emission_prob = False
+        elif mode == "g2p":
+            tokens = pad_tokens(tokenize_g2p(data_train), n=n_max, start_pad=True, end_marker=True)
+            build_emission_prob = True
+
+        ngram_fold = ngram.NGram(tokens, n=n_max, build_cont_fdist=build_cont_fdist, build_follow_fdist=build_follow_fdist, build_emission_prob=build_emission_prob, data_train=data_train, verbose=True)
 
         # Save the n-gram to a file
         fname = output_fname
@@ -86,12 +94,14 @@ def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=
     print("DONE in {:.2f} s".format(time.time() - start_t))
 
 
-def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fnames=None, lower_case=True, output_fname=None, output_fdir=None, state_elim=True, validation=True, save_log=True, save_result_=True, timestamp=True):
+def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fnames=None, lower_case=True, output_fname=None, output_fdir=None, state_elim=True, stemming=False, mode="syl", validation=True, save_log=True, save_result_=True, timestamp=True):
     start_t = time.time()
     result_log = {
         "metadata": {
             "n_file": len(data_test_fnames),
             "n": n,
+            "state_elim": state_elim,
+            "stemming": stemming,
             "prob_args": prob_args.copy()
         },
         "overall": {},
@@ -101,8 +111,10 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
     fold_list = get_folds_from_fnames(data_test_fnames)
     fold_mode = fold_list is not None
     
+    print(f"Mode: {mode}\n")
     print(f"Fold mode : {fold_mode}")
-    print(f"State-elim: {state_elim}\n")
+    print(f"State-elim: {state_elim}")
+    print(f"Stemming: {stemming}\n")
 
     if fold_mode:
         result_log["metadata"]["folds"] = str(fold_list)
@@ -137,7 +149,8 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
             n_gram_fnames[i], 
             n_max=n, 
             load_follow_fdist=True, 
-            load_cont_fdist=True
+            load_cont_fdist=True,
+            load_emission_prob=False
         )
 
         if prob_args["with_aug"]:
@@ -155,8 +168,15 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
             prob_args["vowels"] = list(util.str_to_tags(config["SYMBOLS"]["vowels"]))
             prob_args["semi_vowels"] = list(util.str_to_tags(config["SYMBOLS"]["semi_vowels"]))
             prob_args["diphtongs"] = list(util.str_to_tags(config["SYMBOLS"]["diphtongs"]))
+        
+        g2p_map = None
+
+        if mode == "g2p":
+            g2p_map = G2P_DEFAULT
+        
+        stemmer = Stemmer() if stemming else None
     
-        result = syllabify(data_test, n, prob_args, state_elim=state_elim, validation=validation)
+        result = syllabify(data_test, n, prob_args, state_elim=state_elim, stemmer=stemmer, mode=mode, g2p_map=g2p_map, validation=validation)
 
         # Clear n_gram from memory
         prob_args['n_gram'] = None
@@ -185,6 +205,7 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
     end_t = time.time()
 
     if save_log:
+        # Average SER
         avg_ser = sum(result_log["results"][i]['syllable_error_rate'] for i in result_log["results"]) / (len(result_log["results"]))
 
         result_log['overall']['average_ser'] = round(avg_ser, 8)
@@ -194,6 +215,18 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
 
         os.makedirs(f"{output_fdir}/logs", exist_ok=True)
         log_fpath = util.save_dict_to_log(result_log, f"log_{output_fname}", f"{output_fdir}/logs/")
+        
+        # For easy copy-paste to sheet
+        with open(log_fpath, 'a') as log_file:
+            log_file.write('\n\n[Sheet copy-paste]\n\nTotal\tCorrect')
+            
+            for i in result_log['results']:
+                total = result_log['results'][i]['total_syllables']
+                correct = result_log['results'][i]['correct_syllables']
+                log_file.write(f'\n{total}\t{correct}')
+
+
+        
         print(f'Log saved to "{log_fpath}"')
     
     print("DONE in {:.2f} s".format(end_t - start_t))

@@ -43,7 +43,7 @@ Desc: Syllabify each word in the test set
 In  : data_test (pd.DataFrame), n (int), prob_args (dict), args (dict)
 Out : pd.DataFrame
 '''
-def syllabify(data_test, n, prob_args, state_elim=True, validation=True, verbose=True):
+def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl", g2p_map=None, validation=True, verbose=True):
     start_t = time.time()
     
     total_words = len(data_test)
@@ -81,21 +81,36 @@ def syllabify(data_test, n, prob_args, state_elim=True, validation=True, verbose
         i += 1
 
         # Tag the letters of the word
-        tag_sequence = tagger.tag_word(row.word, n, prob_args, state_elim=state_elim)
-        syl_pred = util.tags_to_segmented_word(row.word, tag_sequence)
+        tag_sequence = tagger.tag_word(row.word, n, prob_args, state_elim=state_elim, stemmer=stemmer, mode=mode, g2p_map=g2p_map)
+        
+        if mode == "syl":
+            syl_pred = util.tags_to_segmented_word(row.word, tag_sequence)
+        elif mode == "g2p":
+            syl_pred = "".join(tag_sequence)
+        
         syl_preds.append(syl_pred)
 
         # Compare the real and predicted syllables and count the differences
         mm_count = 0
         
         if validation:
-            real_syllables = util.split_syllables(row.syllables)
+            if mode == "syl":
+                real_syllables = util.split_syllables(row.syllables)
+            elif mode == "g2p":
+                real_syllables = row.syllables.replace(".", "").replace("-", "")
+            
             total_syllables += len(real_syllables)
 
             if row.syllables != syl_pred:
                 wrong_words += 1
-                pred_syllables = util.split_syllables(syl_pred)
+                
+                if mode == "syl":
+                    pred_syllables = util.split_syllables(syl_pred)
+                elif mode == "g2p":
+                    pred_syllables = syl_pred.replace(".", "").replace("-", "")
+                
                 mm_count = mismatch_count(pred_syllables, real_syllables)
+
                 wrong_syllables += mm_count
         
             mm_counts.append(mm_count)
@@ -197,7 +212,7 @@ def load_result(fpath):
             'syllable_error_rate': round(syllable_error_rate, 5),
         }
     }
-    print('Successfully loaded "{}"'.format(fname))
+    print('Successfully loaded "{}"'.format(fpath))
     
     return result
 

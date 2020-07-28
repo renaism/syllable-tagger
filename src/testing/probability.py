@@ -278,6 +278,15 @@ def get_probability(tags, args, original_word=True):
 
 
 '''
+Desc: Get the emission probability given a tag for a symbol
+In  : symbol (str), tag (str), n_gram (NGram)
+Out : float
+'''
+def get_emission_prob(symbol, tag, n_gram):
+    return n_gram.emission_prob[tag][symbol]
+
+
+'''
 Desc: Initialize a probability cache
 In  : n (int)
 Out : dict

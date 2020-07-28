@@ -101,7 +101,7 @@ class StatusBar(tk.Frame):
         
         self.status_text.insert(tk.END, string)
 
-        if string[-1] == "\r":
+        if len(string) > 0 and string[-1] == "\r":
             self.repeat_line = True
         
         self.status_text.config(state=tk.DISABLED)

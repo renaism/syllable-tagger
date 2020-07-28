@@ -5,9 +5,9 @@ import json
 import time
 
 class NGram():
-    def __init__(self, tokens=None, n=2, build_cont_fdist=True, build_follow_fdist=True, verbose=False):
+    def __init__(self, tokens=None, n=2, build_cont_fdist=True, build_follow_fdist=True, build_emission_prob=False, data_train=None, verbose=False):
         if tokens != None:
-            self.generate(tokens, n, build_cont_fdist, build_follow_fdist, verbose)
+            self.generate(tokens, n, build_cont_fdist, build_follow_fdist, build_emission_prob, data_train, verbose)
     
 
     '''
@@ -15,7 +15,7 @@ class NGram():
     In  : tokens(list), n (int)
     F.S.: NGram initialized with frequency and continuation frequency distributions of each nth-gram
     '''
-    def generate(self, tokens, n=2, build_cont_fdist=True, build_follow_fdist=True, verbose=False):
+    def generate(self, tokens, n=2, build_cont_fdist=True, build_follow_fdist=True, build_emission_prob=False, data_train=None, verbose=False):
         start_t = time.time()
         n_tokens = len(tokens)
         util.printv(verbose, 'Number of words: ', n_tokens)
@@ -91,6 +91,26 @@ class NGram():
                     util.printv(verbose, 'n: {}/{} | [Pass 2] Grams: {}/{}'.format(i, n-1, j, len_fdist), end='\r', cp=cp)
                 
                 util.printv(verbose, 'n: {}/{} | DONE in {:.2f} s'.format(i, n-1, time.time() - start_ti))
+
+        if build_emission_prob:
+            util.printv(verbose, '\nBuilding emission frequency distribution')
+            self.emission_prob = {}
+
+            for row in data_train.itertuples():
+                for i in range(len(row.word)):
+                    if self.fdist[1][(row.syllables[i],)] < 1:
+                        continue
+
+                    if row.syllables[i] not in self.emission_prob:
+                        self.emission_prob[row.syllables[i]] = FreqDist()
+                    
+                    self.emission_prob[row.syllables[i]][row.word[i]] += 1
+            
+            for tag in self.emission_prob:
+                tag_freq = self.fdist[1][(tag,)]
+
+                for sym in self.emission_prob[tag]:
+                    self.emission_prob[tag][sym] = self.emission_prob[tag][sym] / tag_freq
 
         util.printv(verbose, '\nFinished building n-gram in {:.2f} s'.format(time.time() - start_t))
     
@@ -237,6 +257,16 @@ def save(ngram, fname, fdir):
             for k, v in ffd.items():
                 data['follow_fdist'][i][util.tags_to_str(k)] = v
     
+    # Encode emission probabilities
+    if hasattr(ngram, 'emission_prob'):
+        data['emission_prob'] = {}
+
+        for tag, ep in ngram.emission_prob.items():
+            data['emission_prob'][tag] = ep
+
+            #for k, v in ep.items():
+            #    data['emission_prob'][tag][k] = v
+    
     # Write to file
     fpath = f"{fdir}/{fname}.json" 
 
@@ -249,7 +279,7 @@ Desc: Load n-gram from a file and decode it
 In  : fpath (str), n_max (int), load_cont_fdist (bool), load_follow_fdist (bool)
 Out : NGram
 '''
-def load(fpath, n_max=None, load_cont_fdist=True, load_follow_fdist=True):
+def load(fpath, n_max=None, load_cont_fdist=True, load_follow_fdist=True, load_emission_prob=False):
     with open(fpath, encoding='utf-8') as f:
         data = json.loads(f.read())
 
@@ -311,6 +341,16 @@ def load(fpath, n_max=None, load_cont_fdist=True, load_follow_fdist=True):
 
                 for k, v in fdist.items():
                     ngram.follow_fdist[i][tags][int(k)] = int(v)
+        
+    # Decode emission probabilities
+    if load_emission_prob:
+        ngram.emission_prob = {}
+
+        for tag, ep in data['emission_prob'].items():
+            ngram.emission_prob[tag] = FreqDist()
+
+            for k, v in ep.items():
+                ngram.emission_prob[tag][k] = float(v)
 
     # Get all unique grams from fdist keys
     ngram.grams = {}

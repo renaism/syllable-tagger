@@ -40,30 +40,117 @@ def generate_states(word, state_length):
     return list(set(states))
 
 
-def generate_possible_syllabifications(word):
-    n = 2**len(word)
+def is_phoneme_valid(phoneme, word, i):
+    check_r = i < len(word)-2
+    check_l = i > 0
 
-    # Create a binary syl mid(0)/end(1) map
-    bin_format ='0{}b'.format(len(bin(n-1)[2:]))
-    syl_map = []
+    if check_r:
+        if word[i+1] != ".":
+            r = word[i+1]
+        else:
+            r = word[i+2]
+
+    if check_l:
+        if word[i-1] != ".":
+            l = word[i-1]
+        else:
+            l = word[i-2]
+
+    if check_r and word[i] == "a" and r not in ["i", "y"]:
+        if phoneme == "$":
+            return False
+
+    if check_r and word[i] == "a" and r not in ["u", "w"]:
+        if phoneme == "@":
+            return False
+    
+    if check_r and word[i] == "e" and r not in ["i", "y"]:
+        if phoneme == "%":
+            return False
+    
+    if check_r and word[i] == "e" and r not in ["a", "e", "i", "o", "u"]:
+        if phoneme in ["2", "3"]:
+            return False
+
+    if check_l and word[i] == "g" and l != "n":
+        if phoneme == "*":
+            return False
+    
+    if check_l and word[i] == "i" and l not in ["a", "e", "o"]:
+        if phoneme == "*":
+            return False
+    
+    if check_r and word[i] == "i" and r not in ["a", "e", "o"]:
+        if phoneme == "4":
+            return False
+    
+    if check_r and word[i] == "k" and r != "h":
+        if phoneme == "(":
+            return False
+    
+    if check_r and word[i] == "n" and r not in ["c", "j", "s", "y"]:
+        if phoneme == "+":
+            return False
+    
+    if check_r and word[i] == "n" and r not in ["g", "k"]:
+        if phoneme == ")":
+            return False
+    
+    if check_r and word[i] == "o" and r not in ["i", "y"]:
+        if phoneme == "^":
+            return False
+    
+    if check_r and word[i] == "s" and r != "y":
+        if phoneme == "~":
+            return False
+    
+    if check_l and word[i] == "u" and l != "a":
+        if phoneme == "*":
+            return False
+    
+    if check_r and word[i] == "u" and r not in ["a", "e", "o"]:
+        if phoneme == "6":
+            return False
+    
+    if check_l and word[i] == "y" and l not in ["n", "s"]:
+        if phoneme == "*":
+            return False
+    
+    return True
+
+
+def generate_states_g2p(word, state_length, g2p_map, state_elim=False, pre_phoneme=None):
+    states = []
+
+    initial_state = tuple(STARTPAD for _ in range(state_length))
+    states.append([initial_state])
+
+    n = len(word)
 
     for i in range(n):
-        bin_i = [int(x) for x in format(i, bin_format)]
+        states_i = []
+        traversed_prev_states = set()
 
-        # Only insert binary that ends with 1 (syl end)
-        if bin_i[-1] == 1:
-            syl_map.append(bin_i)
-    
-    for sm_row in syl_map:
-        tag_sequence = []
-
-        for i, syl in enumerate(sm_row):
-            tag = SYLMID if syl == 0 else SYLEND
-            tag_sequence.append(f"{word[i]}{tag}")
+        for state in states[len(states)-1]:
+            if state[1:] in traversed_prev_states:
+                continue
+            else:
+                traversed_prev_states.add(state[1:])
+            
+            if pre_phoneme and pre_phoneme[i] != None:
+                new_phonemes = pre_phoneme[i]
+            elif word[i] in g2p_map:
+                new_phonemes = g2p_map[word[i]]
+            else:
+                new_phonemes = [word[i]]
+            
+            for new_phoneme in new_phonemes:
+                if not state_elim or (state_elim and is_phoneme_valid(new_phoneme, word, i)):
+                    states_i.append(state[1:] + (new_phoneme,))
         
-        syl_word = util.tags_to_segmented_word(word, tag_sequence)
+        states.append(states_i)
 
-        print(syl_word)
+    return states
 
 
 '''
@@ -111,11 +198,117 @@ def eliminate_states(states):
 
 
 '''
+Desc: Eliminate states that contain undesirable tags combination, for g2p
+In  : states (list)
+Out : list
+'''
+def eliminate_states_g2p(states, word):
+    new_states = [states[0]]
+    n = len(word)
+
+    for i in range(n-1): # n-1 because last character is a wordend marker
+        if word[i] == ".":
+            new_states.append(states[i+1])
+            continue
+        
+        new_states_i = []
+
+        for state in states[i+1]:
+            valid = True
+
+            check_r = i < n-2
+            check_l = i > 0
+
+            if check_r:
+                if word[i+1] != ".":
+                    r = word[i+1]
+                else:
+                    r = word[i+2]
+
+            if check_l:
+                if word[i-1] != ".":
+                    l = word[i-1]
+                else:
+                    l = word[i-2]
+
+            if check_r and word[i] == "a" and r not in ["i", "y"]:
+                if state[-1] == "$":
+                    valid = False
+
+            if check_r and word[i] == "a" and r not in ["u", "w"]:
+                if state[-1] == "@":
+                    valid = False
+            
+            if check_r and word[i] == "e" and r not in ["i", "y"]:
+                if state[-1] == "%":
+                    valid = False
+            
+            if check_r and word[i] == "e" and r not in ["a", "e", "i", "o", "u"]:
+                if state[-1] in ["2", "3"]:
+                    valid = False
+
+            if check_l and word[i] == "g" and l != "n":
+                if state[-1] == "*":
+                    valid = False
+            
+            if check_l and word[i] == "i" and l not in ["a", "e", "o"]:
+                if state[-1] == "*":
+                    valid = False
+            
+            if check_r and word[i] == "i" and r not in ["a", "e", "o"]:
+                if state[-1] == "4":
+                    valid = False
+            
+            if check_r and word[i] == "k" and r != "h":
+                if state[-1] == "(":
+                    valid = False
+            
+            if check_r and word[i] == "n" and r not in ["c", "j", "s", "y"]:
+                if state[-1] == "+":
+                    valid = False
+            
+            if check_r and word[i] == "n" and r not in ["g", "k"]:
+                if state[-1] == ")":
+                    valid = False
+            
+            if check_r and word[i] == "o" and r not in ["i", "y"]:
+                if state[-1] == "^":
+                    valid = False
+            
+            if check_r and word[i] == "s" and r != "y":
+                if state[-1] == "~":
+                    valid = False
+            
+            if check_l and word[i] == "u" and l != "a":
+                if state[-1] == "*":
+                    valid = False
+            
+            if check_r and word[i] == "u" and r not in ["a", "e", "o"]:
+                if state[-1] == "6":
+                    valid = False
+            
+            if check_l and word[i] == "y" and l not in ["n", "s"]:
+                if state[-1] == "*":
+                    valid = False
+            
+            if valid:
+                new_states_i.append(state)
+        
+        new_states.append(new_states_i)
+    
+    new_states.append(states[-1])
+
+    return new_states
+
+
+'''
 Desc: Tag each letter in a word based on wether it's before syllable boundary or not
-In  : word (str), prob_args (dict), state_elim (bool), verbose (bool)
+In  : word (str), prob_args (dict), state_elim (bool), mode (syl/g2p), verbose (bool)
 Out : list 
 '''
-def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
+def _tag_word(word, n, prob_args, state_elim=True, mode="syl", g2p_map=None, verbose=False):
+    assert mode == "g2p"
+    
     start_t = time.time()
     
     prob_args["word"] = word
@@ -125,16 +318,16 @@ def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
     T = len(word)
 
     # Generate possible states
-    states = generate_states(word, n-1)
-
-    #if "aug_prob_fl" in prob_args and prob_args["aug_prob_fl"]:
-    #    pass
+    if mode == "syl":
+        states = generate_states(word, n-1)
+    elif mode == "g2p":
+        states = generate_states_g2p(word, n-1, g2p_map, state_elim=state_elim)
 
     # Eliminate invalid states
-    if state_elim:
+    if state_elim and mode == "syl":
         states = eliminate_states(states)
     
-    N = len(states)
+    N = len(max(states, key=len))
     V = np.full((T, N), -np.inf)
     B = {}
 
@@ -146,17 +339,15 @@ def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
     # Starting log probabilities
     symbol = word[0]
     util.printv(verbose, 'Current symbol:', symbol)
-    traversed_states = set()
     prob_args["can_aug_prob"] = False
 
-    for i, state in enumerate(states):
-        # Skip the state if it's doesn't match with the initial state or current symbol
-        if initial_state[1:] != state[:-1] or state[-1][0] != symbol:
-            continue
-
-        traversed_states.add(state)
+    for i, state in enumerate(states[1]):
         tags = (initial_state[0], ) + state
         tr_logprob = util.log_prob(probability.get_probability(tags, prob_args))
+
+        #if mode == "g2p":
+            #tr_logprob += util.log_prob(probability.get_emission_prob(word[0], state[-1], prob_args["n_gram"]))
+
         prob_calc += 1
 
         util.printv(verbose, '[{}] {}->{} : {:.5f}'.format(i, initial_state, state, tr_logprob))
@@ -167,33 +358,26 @@ def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
     for t in range(1, T):
         symbol = word[t]
         util.printv(verbose, '\nCurrent symbol:', symbol)
-        
-        prev_states = traversed_states
-        traversed_states = set()
 
         if t == n-1 and t < T-1 and "aug_prob" in prob_args and prob_args["aug_prob"]:
             prob_args["can_aug_prob"] = True
         else:
             prob_args["can_aug_prob"] = False
         
-        for j, state in  enumerate(states):
-            # Skip the state if the end tag doesn't match with the current symbol
-            if state[-1][0] != symbol:
-                continue
-            
+        for j, state in enumerate(states[t+1]):
             best = (-np.inf, None)
-            for i, prev_state in enumerate(states):
-                # Skip if the prev_state not in the previously traversed states
-                if prev_state not in prev_states:
-                    continue
 
+            for i, prev_state in enumerate(states[t]):
                 # Skip if the last tag of prev_state doesn't match with the first tag of the current state
                 if prev_state[1:] != state[:-1]:
                     continue
 
-                traversed_states.add(state)
                 tags = (prev_state[0], ) + state
                 tr_logprob = util.log_prob(probability.get_probability(tags, prob_args))
+
+                #if mode == "g2p" and word[t] != WORDEND:
+                    #tr_logprob += util.log_prob(probability.get_emission_prob(word[t], state[-1], prob_args["n_gram"]))
+                
                 va = V[t-1, i] + tr_logprob
                 prob_calc += 1
 
@@ -209,11 +393,7 @@ def _tag_word(word, n, prob_args, state_elim=True, verbose=False):
 
     # Find the biggest probability for final state
     best = None
-    for i, state in enumerate(states):
-        # Only search state from the traversed state in the last iteration
-        if state not in traversed_states:
-            continue
-        
+    for i, state in enumerate(states[T]):
         val = V[T-1, i]
         if not best or val > best[0]:
             best = (val, state)
@@ -246,14 +426,30 @@ Desc: Split word based on hyphen before tagging it
 In  : word (str), prob_args (dict), state_elim (bool), verbose (bool)
 Out : list 
 '''
-def tag_word(word, n, prob_args, state_elim=True, verbose=False):
+def tag_word(word, n, prob_args, state_elim=True, mode="syl", g2p_map=None, stemmer=None, verbose=False):
     # Split the word if it has hyphen into sub-words
     sub_words = word.replace('-', ' ').split()
     
     # Tag each sub word separately
     sequence = []
 
-    for sub_word in sub_words:
-        sequence += _tag_word(sub_word, n, prob_args, state_elim, verbose)
+    for i, sub_word in enumerate(sub_words):
+        if stemmer and mode == "g2p":
+            prefix, root, d_suffix, i_suffix = stemmer.getRoot(sub_word)
+            prefix_p, d_suffix_p, i_suffix_p = stemmer.getAffixPhonemes(root, prefix, d_suffix, i_suffix)
+
+            sequence += list(prefix_p)
+
+            sw_sequence = _tag_word(sub_word, n, prob_args, state_elim, mode, g2p_map, verbose)
+            sequence += sw_sequence[len(prefix_p):len(sw_sequence) - (len(d_suffix_p) + len(i_suffix_p))]
+
+            sequence += list(d_suffix_p)
+            sequence += list(i_suffix_p)
+        
+        else:
+            sequence += _tag_word(sub_word, n, prob_args, state_elim, mode, g2p_map, verbose)
+
+        if mode == "g2p" and (i < len(sub_words)-1 or word[-1] == "-"):
+            sequence.append('-')
     
     return sequence

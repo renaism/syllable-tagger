@@ -58,6 +58,10 @@ class TabTesting(Tab):
         self.cbt_state_elim = tk.Checkbutton(self.frm_sidebar, variable=self.var_state_elim, text="State-elimination")
         self.cbt_state_elim.grid(columnspan=2, sticky="nw")
 
+        self.var_stemming = tk.BooleanVar()
+        self.cbt_stemming = tk.Checkbutton(self.frm_sidebar, variable=self.var_stemming, text="Stemming")
+        self.cbt_stemming.grid(sticky="nw") 
+
         # n-gram aug params
         self.var_augmentation = tk.BooleanVar()
         self.cbt_augmentation = tk.Checkbutton(self.frm_sidebar, variable=self.var_augmentation, command=self.toggle_augmentation, text="Augmented n-gram")
@@ -164,6 +168,11 @@ class TabTesting(Tab):
         self.var_timestamp.set(True)
         self.cbt_var_timestamp = tk.Checkbutton(self.frm_sidebar, variable=self.var_timestamp, text="Timestamp")
         self.cbt_var_timestamp.grid(columnspan=2, sticky="nw")
+
+        self.var_mode = tk.StringVar()
+        self.var_mode.set("syl")
+        tk.Radiobutton(self.frm_sidebar, text="syl", variable=self.var_mode, value="syl").grid(sticky="nw")
+        tk.Radiobutton(self.frm_sidebar, text="g2p", variable=self.var_mode, value="g2p").grid(sticky="nw")
     
 
     def main(self):
@@ -253,7 +262,15 @@ class TabTesting(Tab):
     
 
     def auto_output_fname(self):
-        fname = f"{SMOOTHING_METHOD_KEY[self.var_smoothing.get()]}_n={self.var_n.get()}"
+        fname = ""
+        
+        if self.var_state_elim.get():
+            fname += "se_"
+        
+        if self.var_stemming.get():
+            fname += "stem_"
+
+        fname += f"{SMOOTHING_METHOD_KEY[self.var_smoothing.get()]}_n={self.var_n.get()}"
         
         if self.var_smoothing.get() == "GKN":
             fname += f"_B={self.var_gkn_b.get()}"
@@ -365,6 +382,8 @@ class TabTesting(Tab):
                 output_fname=self.var_output_fname.get(),
                 output_fdir=self.var_output_fdir.get(),
                 state_elim=self.var_state_elim.get(),
+                stemming=self.var_stemming.get(),
+                mode=self.var_mode.get(),
                 validation=self.var_validation.get(),
                 save_log=self.var_save_log.get(),
                 save_result_=self.var_save_result.get(),

@@ -4,7 +4,7 @@ from config import *
 '''
 Desc: Convert syllable-segmented text to tokens of tags
 In  : data_train (pd.DataFrame)
-Out: List
+Out : List
 '''
 def tokenize(data_train):
     tokens = []
@@ -33,6 +33,24 @@ def tokenize(data_train):
                 word_tokens.append(token)
             
             tokens.append(word_tokens)
+    
+    return tokens
+
+
+'''
+Desc: Convert syllable-segmented phonemic text to tokens of tags
+In  : data_train (pd.DataFrame)
+Out : List
+'''
+def tokenize_g2p(data_train):
+    tokens = []
+
+    for syl_word in data_train['syllables']:
+        # Split words that have hyphen
+        syl_sub_words  = syl_word.replace('-', ' ').split() 
+
+        for syl_sub_word in syl_sub_words:
+            tokens.append(list(syl_sub_word))
     
     return tokens
 

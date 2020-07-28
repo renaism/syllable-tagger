@@ -3,10 +3,10 @@ import configparser
 import utility as util
 
 # Symbols for tag
-SYLMID  = u"\u00A1" # Inverted Exclamation Mark - For letters that are not syllable boundary 
-SYLEND  = u"\u2022" # Bullet - For letters that are syllable boundary
-WORDEND = u"\u00D7" # Multiplication Sign - For word ending
-
+SYLMID   = u"\u00A1" # Inverted Exclamation Mark - For letters that are not syllable boundary 
+SYLEND   = u"\u2022" # Bullet - For letters that are syllable boundary
+WORDEND  = u"\u00D7" # Multiplication Sign - For word ending
+SYLBOUND = "." # Syllable boundary
 STARTPAD = "#" # Pad for the beginning of each word
 
 CONFIG_FNAME = "config.ini"
@@ -14,6 +14,37 @@ CONFIG_FNAME = "config.ini"
 VOWELS_DEFAULT = ["a", "e", "i", "o", "u"]
 SEMI_VOWELS_DEFAULT = ["y", "w"]
 DIPHTONGS_DEFAULT = ["ai", "au", "ei", "oi", "ay", "aw", "ey", "oy"]
+
+G2P_DEFAULT = {
+    'a': ['a', '$', '@', '1'],
+    'b': ['b'],
+    'c': ['c'],
+    'd': ['d'],
+    'e': ['e', '#', '%', '2', '3'],
+    'f': ['f'],
+    'g': ['g', '*'],
+    'h': ['h', '*'],
+    'i': ['i', '*', '4'],
+    'j': ['j'],
+    'k': ['k', '(', '*'],
+    'l': ['l'],
+    'm': ['m'],
+    'n': ['n', ')', '+'],
+    'o': ['o', '^', '5'],
+    'p': ['p'],
+    'q': ['k'],
+    'r': ['r'],
+    's': ['s', '~'],
+    't': ['t'],
+    'u': ['u', '*', '6'],
+    'v': ['f'],
+    'w': ['w'],
+    'x': ['s'],
+    'y': ['y', '*'],
+    'z': ['z'],
+    SYLBOUND: [SYLBOUND],
+    WORDEND: [WORDEND]
+}
 
 def init_config():
     config = configparser.ConfigParser( 
@@ -37,11 +68,16 @@ def create_config():
         "diphtongs": util.tags_to_str(DIPHTONGS_DEFAULT)
     }
 
+    config["G2P"] = {}
+
+    for g, p in G2P_DEFAULT.items():
+        config["G2P"][g] = util.tags_to_str(p)
+
     return config
 
 
 def save_config(config):
-    with open(CONFIG_FNAME, "w") as configfile:
+    with open(CONFIG_FNAME, "w", encoding='utf-8') as configfile:
         config.write(configfile)
 
 
