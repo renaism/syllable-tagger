@@ -44,9 +44,9 @@ class TabTesting(Tab):
         # Main params
         tk.Label(self.frm_sidebar, text="n").grid(row=0, column=0, sticky="nw")
 
-        self.var_n = tk.IntVar()
+        self.var_n = tk.StringVar()
         self.var_n.set(5)
-        self.sbx_n = tk.Spinbox(self.frm_sidebar, textvariable=self.var_n, from_=1, to=10, width=style.DIGIT_ENTRY_WIDTH)
+        self.sbx_n = tk.Spinbox(self.frm_sidebar, textvariable=self.var_n, from_=1, to=99, width=style.DIGIT_ENTRY_WIDTH)
         self.sbx_n.grid(row=0, column=1, sticky="ne")
         
         self.var_lower_case = tk.BooleanVar()
@@ -121,9 +121,9 @@ class TabTesting(Tab):
 
         tk.Label(self.frm_smoothings["GKN"], text="B").grid(row=0, column=0, sticky="nw")
 
-        self.var_gkn_b = tk.IntVar()
+        self.var_gkn_b = tk.StringVar()
         self.var_gkn_b.set(3)
-        self.sbx_gkn_b = tk.Spinbox(self.frm_smoothings["GKN"], from_=1, to=100, textvariable=self.var_gkn_b, width=style.DIGIT_ENTRY_WIDTH)
+        self.sbx_gkn_b = tk.Spinbox(self.frm_smoothings["GKN"], textvariable=self.var_gkn_b, from_=1, to=99, width=style.DIGIT_ENTRY_WIDTH)
         self.sbx_gkn_b.grid(row=0, column=1, sticky="ne")
 
         # KN params
@@ -284,11 +284,54 @@ class TabTesting(Tab):
 
         self.var_output_fname.set(fname)
 
-    
+
+    def get_var_range(self, str_range, var_name, var_min=1, var_max=99):
+        valid = True
+        var_range = str_range.split("-")
+
+        if len(var_range) < 1:
+            self.status_bar.write(f"[!] {var_name} can not be empty\n")
+            valid = False
+        elif len(var_range) > 2:
+            self.status_bar.write(f"[!] {var_name} range is not valid\n")
+            valid = False
+        else:
+            for i in range(len(var_range)):
+                try:
+                    var_range[i] = int(var_range[i])
+                except ValueError:
+                    self.status_bar.write(f"[!] {var_name} is not a valid integer number\n")
+                    valid = False
+                    break
+            
+            if valid:
+                var_start = var_range[0]
+                var_end   = var_range[len(var_range)-1]
+                
+                if var_start > var_end:
+                    var_start, var_end = var_end, var_start
+                
+                if var_start < var_min:
+                    self.status_bar.write(f"[!] {var_name} can not be smaller than {var_min}\n")
+                    valid = False
+                
+                if var_end > var_max:
+                    self.status_bar.write(f"[!] {var_name} can not be bigger than {var_max}\n")
+                    valid = False
+        
+        if valid:
+            return range(var_start, var_end+1)
+                
+
     def btn_start_click(self):
         valid = True
 
         # Validations
+        self.n_range = self.get_var_range(self.var_n.get(), "n")
+
+        if not self.n_range:
+            valid = False
+
         if self.var_augmentation.get():
             try:
                 aug_w = float(self.var_aug_w.get())
@@ -296,7 +339,12 @@ class TabTesting(Tab):
                 self.status_bar.write("[!] Aug. w is not a valid decimal number\n")
                 valid = False
 
-        if self.var_smoothing.get() == "KN":
+        if self.var_smoothing.get() == "GKN":
+            self.gkn_b_range = self.get_var_range(self.var_gkn_b.get(), "B")
+
+            if not self.gkn_b_range:
+                valid = False
+        elif self.var_smoothing.get() == "KN":
             try:
                 d = float(self.var_kn_d.get())
             except ValueError:
@@ -351,47 +399,54 @@ class TabTesting(Tab):
         old_stdout = sys.stdout
         sys.stdout = self.status_bar
 
-        prob_args= {
-            "method": SMOOTHING_METHOD_KEY[self.var_smoothing.get()],
-            "with_aug": self.var_augmentation.get(),
-            "aug_prob": self.var_aug_prob.get(),
-            "aug_prob_methods": {
-                "flip_onsets": self.var_aug_prob_flip.get(),
-                "transpose_nucleus": self.var_aug_prob_transpose.get()
-            }
-        }
+        for n in self.n_range:
+            if self.var_smoothing.get() == "GKN":
+                smoothing_param_range = self.gkn_b_range
+            else:
+                smoothing_param_range = range(0, 1)
+            
+            for smoothing_param in smoothing_param_range:
+                prob_args= {
+                    "method": SMOOTHING_METHOD_KEY[self.var_smoothing.get()],
+                    "with_aug": self.var_augmentation.get(),
+                    "aug_prob": self.var_aug_prob.get(),
+                    "aug_prob_methods": {
+                        "flip_onsets": self.var_aug_prob_flip.get(),
+                        "transpose_nucleus": self.var_aug_prob_transpose.get()
+                    }
+                }
 
-        if self.var_augmentation.get():
-            prob_args["aug_w"] = float(self.var_aug_w.get())
+                if self.var_augmentation.get():
+                    prob_args["aug_w"] = float(self.var_aug_w.get())
 
-        if self.var_smoothing.get() == "GKN":
-            prob_args["d_ceil"] = self.var_gkn_b.get()
-        elif self.var_smoothing.get() == "KN":
-            prob_args["d"] = float(self.var_kn_d.get())
-        elif self.var_smoothing.get() == "Stupid Backoff":
-            prob_args["alpha"] = float(self.var_sb_alpha.get())
+                if self.var_smoothing.get() == "GKN":
+                    prob_args["d_ceil"] = smoothing_param
+                elif self.var_smoothing.get() == "KN":
+                    prob_args["d"] = float(self.var_kn_d.get())
+                elif self.var_smoothing.get() == "Stupid Backoff":
+                    prob_args["alpha"] = float(self.var_sb_alpha.get())
 
-        try:
-            syllabify_folds(
-                data_test_fnames=self.test_files,
-                n_gram_fnames=self.ngram_files,
-                n=self.var_n.get(),
-                prob_args=prob_args,
-                n_gram_aug_fnames=self.ngram_aug_files,
-                lower_case=self.var_lower_case.get(),
-                output_fname=self.var_output_fname.get(),
-                output_fdir=self.var_output_fdir.get(),
-                state_elim=self.var_state_elim.get(),
-                stemming=self.var_stemming.get(),
-                mode=self.var_mode.get(),
-                validation=self.var_validation.get(),
-                save_log=self.var_save_log.get(),
-                save_result_=self.var_save_result.get(),
-                timestamp=self.var_timestamp.get()
-            )
-        except Exception as e:
-            print(f"Error:\n{e}")
-            print(traceback.format_exc())
+                try:
+                    syllabify_folds(
+                        data_test_fnames=self.test_files,
+                        n_gram_fnames=self.ngram_files,
+                        n=n,
+                        prob_args=prob_args,
+                        n_gram_aug_fnames=self.ngram_aug_files,
+                        lower_case=self.var_lower_case.get(),
+                        output_fname=self.var_output_fname.get(),
+                        output_fdir=self.var_output_fdir.get(),
+                        state_elim=self.var_state_elim.get(),
+                        stemming=self.var_stemming.get(),
+                        mode=self.var_mode.get(),
+                        validation=self.var_validation.get(),
+                        save_log=self.var_save_log.get(),
+                        save_result_=self.var_save_result.get(),
+                        timestamp=self.var_timestamp.get()
+                    )
+                except Exception as e:
+                    print(f"Error:\n{e}")
+                    print(traceback.format_exc())
 
         sys.stdout = old_stdout
 

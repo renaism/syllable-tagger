@@ -7,7 +7,8 @@ SYLMID   = u"\u00A1" # Inverted Exclamation Mark - For letters that are not syll
 SYLEND   = u"\u2022" # Bullet - For letters that are syllable boundary
 WORDEND  = u"\u00D7" # Multiplication Sign - For word ending
 SYLBOUND = "." # Syllable boundary
-STARTPAD = "#" # Pad for the beginning of each word
+STARTPAD = u"\u2205" # Pad for the beginning of each word
+#STARTPAD = "#" # Pad for the beginning of each word
 
 CONFIG_FNAME = "config.ini"
 

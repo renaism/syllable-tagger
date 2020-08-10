@@ -150,7 +150,7 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
             n_max=n, 
             load_follow_fdist=True, 
             load_cont_fdist=True,
-            load_emission_prob=False
+            load_emission_prob=True
         )
 
         if prob_args["with_aug"]:

@@ -137,7 +137,7 @@ def generate_states_g2p(word, state_length, g2p_map, state_elim=False, pre_phone
             else:
                 traversed_prev_states.add(state[1:])
             
-            if pre_phoneme and pre_phoneme[i] != None:
+            if i < n-1 and pre_phoneme and pre_phoneme[i] != None:
                 new_phonemes = pre_phoneme[i]
             elif word[i] in g2p_map:
                 new_phonemes = g2p_map[word[i]]
@@ -306,7 +306,7 @@ Desc: Tag each letter in a word based on wether it's before syllable boundary or
 In  : word (str), prob_args (dict), state_elim (bool), mode (syl/g2p), verbose (bool)
 Out : list 
 '''
-def _tag_word(word, n, prob_args, state_elim=True, mode="syl", g2p_map=None, verbose=False):
+def _tag_word(word, n, prob_args, state_elim=True, mode="syl", g2p_map=None, pre_phoneme=None, verbose=False):
     assert mode == "g2p"
     
     start_t = time.time()
@@ -321,7 +321,7 @@ def _tag_word(word, n, prob_args, state_elim=True, mode="syl", g2p_map=None, ver
     if mode == "syl":
         states = generate_states(word, n-1)
     elif mode == "g2p":
-        states = generate_states_g2p(word, n-1, g2p_map, state_elim=state_elim)
+        states = generate_states_g2p(word, n-1, g2p_map, state_elim=state_elim, pre_phoneme=pre_phoneme)
 
     # Eliminate invalid states
     if state_elim and mode == "syl":
@@ -345,8 +345,8 @@ def _tag_word(word, n, prob_args, state_elim=True, mode="syl", g2p_map=None, ver
         tags = (initial_state[0], ) + state
         tr_logprob = util.log_prob(probability.get_probability(tags, prob_args))
 
-        #if mode == "g2p":
-            #tr_logprob += util.log_prob(probability.get_emission_prob(word[0], state[-1], prob_args["n_gram"]))
+        if mode == "g2p":
+            tr_logprob += util.log_prob(probability.get_emission_prob(word[0], state[-1], prob_args["n_gram"]))
 
         prob_calc += 1
 
@@ -375,8 +375,8 @@ def _tag_word(word, n, prob_args, state_elim=True, mode="syl", g2p_map=None, ver
                 tags = (prev_state[0], ) + state
                 tr_logprob = util.log_prob(probability.get_probability(tags, prob_args))
 
-                #if mode == "g2p" and word[t] != WORDEND:
-                    #tr_logprob += util.log_prob(probability.get_emission_prob(word[t], state[-1], prob_args["n_gram"]))
+                if mode == "g2p" and word[t] != WORDEND:
+                    tr_logprob += util.log_prob(probability.get_emission_prob(word[t], state[-1], prob_args["n_gram"]))
                 
                 va = V[t-1, i] + tr_logprob
                 prob_calc += 1
@@ -434,20 +434,15 @@ def tag_word(word, n, prob_args, state_elim=True, mode="syl", g2p_map=None, stem
     sequence = []
 
     for i, sub_word in enumerate(sub_words):
+        pre_phoneme = None
+        
         if stemmer and mode == "g2p":
             prefix, root, d_suffix, i_suffix = stemmer.getRoot(sub_word)
             prefix_p, d_suffix_p, i_suffix_p = stemmer.getAffixPhonemes(root, prefix, d_suffix, i_suffix)
 
-            sequence += list(prefix_p)
-
-            sw_sequence = _tag_word(sub_word, n, prob_args, state_elim, mode, g2p_map, verbose)
-            sequence += sw_sequence[len(prefix_p):len(sw_sequence) - (len(d_suffix_p) + len(i_suffix_p))]
-
-            sequence += list(d_suffix_p)
-            sequence += list(i_suffix_p)
-        
-        else:
-            sequence += _tag_word(sub_word, n, prob_args, state_elim, mode, g2p_map, verbose)
+            pre_phoneme = list(prefix_p) +  [None for _ in range(len(root))] + list(d_suffix_p) + list(i_suffix_p)
+            
+        sequence += _tag_word(sub_word, n, prob_args, state_elim, mode, g2p_map, pre_phoneme, verbose)
 
         if mode == "g2p" and (i < len(sub_words)-1 or word[-1] == "-"):
             sequence.append('-')
