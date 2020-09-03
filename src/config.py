@@ -8,7 +8,6 @@ SYLEND   = u"\u2022" # Bullet - For letters that are syllable boundary
 WORDEND  = u"\u00D7" # Multiplication Sign - For word ending
 SYLBOUND = "." # Syllable boundary
 STARTPAD = u"\u2205" # Pad for the beginning of each word
-#STARTPAD = "#" # Pad for the beginning of each word
 
 CONFIG_FNAME = "config.ini"
 
@@ -46,6 +45,7 @@ G2P_DEFAULT = {
     SYLBOUND: [SYLBOUND],
     WORDEND: [WORDEND]
 }
+
 
 def init_config():
     config = configparser.ConfigParser( 

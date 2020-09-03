@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['src\\app.py'],
+a = Analysis(['src\\g2p.py'],
              pathex=['src'],
              binaries=[],
              datas=[('src\\icon.ico', '.')],

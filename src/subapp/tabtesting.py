@@ -20,8 +20,9 @@ SMOOTHING_METHOD_KEY = {
 } 
 
 class TabTesting(Tab):
-    def __init__(self, master):
+    def __init__(self, master, mode):
         super().__init__(master)
+        self.mode = mode
 
         self.test_files = []
         self.ngram_files = []
@@ -30,11 +31,45 @@ class TabTesting(Tab):
         self.var_output_fname = tk.StringVar()
         self.var_output_fdir = tk.StringVar()
 
+        self.var_n = tk.StringVar()
+        self.var_n.set(5)
+        self.var_lower_case = tk.BooleanVar()
+
+        self.var_state_elim = tk.BooleanVar()
+        self.var_state_elim.set(True)
+        self.var_stemming = tk.BooleanVar()
+
+        self.var_augmentation = tk.BooleanVar()
+        self.var_aug_w = tk.StringVar()
+        self.var_aug_w.set(0.1)
+
+        self.var_aug_prob = tk.BooleanVar()
+        self.var_aug_prob_flip = tk.BooleanVar()
+        self.var_aug_prob_transpose = tk.BooleanVar()
+        self.var_smoothing = tk.StringVar()
+
+        self.var_gkn_b = tk.StringVar()
+        self.var_gkn_b.set(3)
+        self.var_kn_d = tk.StringVar()
+        self.var_kn_d.set(0.75)
+        self.var_sb_alpha = tk.StringVar()
+        self.var_sb_alpha.set(0.4)
+
+        self.var_validation = tk.BooleanVar()
+        self.var_validation.set(True)
+        self.var_save_log = tk.BooleanVar()
+        self.var_save_log.set(True)
+        self.var_save_result = tk.BooleanVar()
+        self.var_save_result.set(True)
+        self.var_timestamp = tk.BooleanVar()
+        self.var_timestamp.set(True)
+
         self.sidebar()
         self.main()
         
-        self.toggle_augmentation()
-        self.toggle_aug_prob()
+        if self.mode == "syl":
+            self.toggle_augmentation()
+            self.toggle_aug_prob()
     
 
     def sidebar(self):
@@ -44,61 +79,54 @@ class TabTesting(Tab):
         # Main params
         tk.Label(self.frm_sidebar, text="n").grid(row=0, column=0, sticky="nw")
 
-        self.var_n = tk.StringVar()
-        self.var_n.set(5)
         self.sbx_n = tk.Spinbox(self.frm_sidebar, textvariable=self.var_n, from_=1, to=99, width=style.DIGIT_ENTRY_WIDTH)
         self.sbx_n.grid(row=0, column=1, sticky="ne")
         
-        self.var_lower_case = tk.BooleanVar()
         self.cbt_lower_case = tk.Checkbutton(self.frm_sidebar, variable=self.var_lower_case, text="Ensure lower case")
         self.cbt_lower_case.grid(sticky="nw") 
 
-        self.var_state_elim = tk.BooleanVar()
-        self.var_state_elim.set(True)
-        self.cbt_state_elim = tk.Checkbutton(self.frm_sidebar, variable=self.var_state_elim, text="State-elimination")
+        if self.mode == "syl":
+            self.cbt_state_elim = tk.Checkbutton(self.frm_sidebar, variable=self.var_state_elim, text="State-elimination")
+        elif self.mode == "g2p":
+            self.cbt_state_elim = tk.Checkbutton(self.frm_sidebar, variable=self.var_state_elim, text="Phonotactic rules")
+        
         self.cbt_state_elim.grid(columnspan=2, sticky="nw")
 
-        self.var_stemming = tk.BooleanVar()
-        self.cbt_stemming = tk.Checkbutton(self.frm_sidebar, variable=self.var_stemming, text="Stemming")
-        self.cbt_stemming.grid(sticky="nw") 
+        if self.mode == "g2p":
+            self.cbt_stemming = tk.Checkbutton(self.frm_sidebar, variable=self.var_stemming, text="Stemming")
+            self.cbt_stemming.grid(sticky="nw") 
 
-        # n-gram aug params
-        self.var_augmentation = tk.BooleanVar()
-        self.cbt_augmentation = tk.Checkbutton(self.frm_sidebar, variable=self.var_augmentation, command=self.toggle_augmentation, text="Augmented n-gram")
-        self.cbt_augmentation.grid(columnspan=2, sticky="nw")
+        if self.mode == "syl":
+            # n-gram aug params
+            self.cbt_augmentation = tk.Checkbutton(self.frm_sidebar, variable=self.var_augmentation, command=self.toggle_augmentation, text="Augmented n-gram")
+            self.cbt_augmentation.grid(columnspan=2, sticky="nw")
 
-        self.frm_aug_params = tk.Frame(self.frm_sidebar)
-        self.frm_aug_params.columnconfigure(1, weight=1)
-        self.frm_aug_params.grid(columnspan=2, sticky="new")
-        
-        tk.Label(self.frm_aug_params, text="Aug. weight").grid(row=0, column=0, sticky="nw")
+            self.frm_aug_params = tk.Frame(self.frm_sidebar)
+            self.frm_aug_params.columnconfigure(1, weight=1)
+            self.frm_aug_params.grid(columnspan=2, sticky="new")
+            
+            tk.Label(self.frm_aug_params, text="Aug. weight").grid(row=0, column=0, sticky="nw")
+            
+            self.ent_aug_w = tk.Entry(self.frm_aug_params, textvariable=self.var_aug_w, width=style.DIGIT_ENTRY_WIDTH)
+            self.ent_aug_w.grid(row=0, column=1, stick="ne")
 
-        self.var_aug_w = tk.StringVar()
-        self.var_aug_w.set(0.1)
-        self.ent_aug_w = tk.Entry(self.frm_aug_params, textvariable=self.var_aug_w, width=style.DIGIT_ENTRY_WIDTH)
-        self.ent_aug_w.grid(row=0, column=1, stick="ne")
+            # Augmented probabiliy params
+            self.cbt_aug_prob = tk.Checkbutton(self.frm_sidebar, variable=self.var_aug_prob, command=self.toggle_aug_prob, text="Augmented probability")
+            self.cbt_aug_prob.grid(columnspan=2, sticky="nw")
 
-        # Augmented probabiliy params
-        self.var_aug_prob = tk.BooleanVar()
-        self.cbt_aug_prob = tk.Checkbutton(self.frm_sidebar, variable=self.var_aug_prob, command=self.toggle_aug_prob, text="Augmented probability")
-        self.cbt_aug_prob.grid(columnspan=2, sticky="nw")
+            self.frm_aug_prob = tk.Frame(self.frm_sidebar)
+            self.frm_aug_prob.columnconfigure(1, weight=1)
+            self.frm_aug_prob.grid(columnspan=2, sticky="new")
 
-        self.frm_aug_prob = tk.Frame(self.frm_sidebar)
-        self.frm_aug_prob.columnconfigure(1, weight=1)
-        self.frm_aug_prob.grid(columnspan=2, sticky="new")
+            self.cbt_augmentation = tk.Checkbutton(self.frm_aug_prob, variable=self.var_aug_prob_flip, text="Flipped onsets")
+            self.cbt_augmentation.grid(columnspan=2, sticky="nw")
 
-        self.var_aug_prob_flip = tk.BooleanVar()
-        self.cbt_augmentation = tk.Checkbutton(self.frm_aug_prob, variable=self.var_aug_prob_flip, text="Flipped onsets")
-        self.cbt_augmentation.grid(columnspan=2, sticky="nw")
-
-        self.var_aug_prob_transpose = tk.BooleanVar()
-        self.cbt_augmentation = tk.Checkbutton(self.frm_aug_prob, variable=self.var_aug_prob_transpose, text="Transposed nucleus")
-        self.cbt_augmentation.grid(columnspan=2, sticky="nw")
+            self.cbt_augmentation = tk.Checkbutton(self.frm_aug_prob, variable=self.var_aug_prob_transpose, text="Transposed nucleus")
+            self.cbt_augmentation.grid(columnspan=2, sticky="nw")
 
         # Smoothing params
         tk.Label(self.frm_sidebar, text="Smoothing").grid(columnspan=2, sticky="nw")
         
-        self.var_smoothing = tk.StringVar()
         self.cbx_smoothing = ttk.Combobox(
             self.frm_sidebar,
             state="readonly",
@@ -121,8 +149,6 @@ class TabTesting(Tab):
 
         tk.Label(self.frm_smoothings["GKN"], text="B").grid(row=0, column=0, sticky="nw")
 
-        self.var_gkn_b = tk.StringVar()
-        self.var_gkn_b.set(3)
         self.sbx_gkn_b = tk.Spinbox(self.frm_smoothings["GKN"], textvariable=self.var_gkn_b, from_=1, to=99, width=style.DIGIT_ENTRY_WIDTH)
         self.sbx_gkn_b.grid(row=0, column=1, sticky="ne")
 
@@ -131,8 +157,6 @@ class TabTesting(Tab):
 
         tk.Label(self.frm_smoothings["KN"], text="D").grid(row=0, column=0, sticky="nw")
 
-        self.var_kn_d = tk.StringVar()
-        self.var_kn_d.set(0.75)
         self.ent_kn_d = tk.Entry(self.frm_smoothings["KN"], textvariable=self.var_kn_d, width=style.DIGIT_ENTRY_WIDTH)
         self.ent_kn_d.grid(row=0, column=1, sticky="ne")
 
@@ -141,38 +165,23 @@ class TabTesting(Tab):
 
         tk.Label(self.frm_smoothings["Stupid Backoff"], text="Alpha").grid(row=0, column=0, sticky="nw")
 
-        self.var_sb_alpha = tk.StringVar()
-        self.var_sb_alpha.set(0.4)
         self.ent_sb_alpha = tk.Entry(self.frm_smoothings["Stupid Backoff"], textvariable=self.var_sb_alpha, width=style.DIGIT_ENTRY_WIDTH)
         self.ent_sb_alpha.grid(row=0, column=1, sticky="ne")
 
         self.cbx_smoothing_changed(None)
 
         # Additional params
-        self.var_validation = tk.BooleanVar()
-        self.var_validation.set(True)
         self.cbt_validation = tk.Checkbutton(self.frm_sidebar, variable=self.var_validation, text="Validation")
         self.cbt_validation.grid(columnspan=2, sticky="nw")
 
-        self.var_save_log = tk.BooleanVar()
-        self.var_save_log.set(True)
         self.cbt_save_log = tk.Checkbutton(self.frm_sidebar, variable=self.var_save_log, text="Save log")
         self.cbt_save_log.grid(columnspan=2, sticky="nw")
 
-        self.var_save_result = tk.BooleanVar()
-        self.var_save_result.set(True)
         self.cbt_ave_result = tk.Checkbutton(self.frm_sidebar, variable=self.var_save_result, text="Save result")
         self.cbt_ave_result.grid(columnspan=2, sticky="nw")
 
-        self.var_timestamp = tk.BooleanVar()
-        self.var_timestamp.set(True)
         self.cbt_var_timestamp = tk.Checkbutton(self.frm_sidebar, variable=self.var_timestamp, text="Timestamp")
         self.cbt_var_timestamp.grid(columnspan=2, sticky="nw")
-
-        self.var_mode = tk.StringVar()
-        self.var_mode.set("syl")
-        tk.Radiobutton(self.frm_sidebar, text="syl", variable=self.var_mode, value="syl").grid(sticky="nw")
-        tk.Radiobutton(self.frm_sidebar, text="g2p", variable=self.var_mode, value="g2p").grid(sticky="nw")
     
 
     def main(self):
@@ -263,12 +272,17 @@ class TabTesting(Tab):
 
     def auto_output_fname(self):
         fname = ""
+
+        if self.mode == "syl":
+            if self.var_state_elim.get():
+                fname += "se_"
         
-        if self.var_state_elim.get():
-            fname += "se_"
-        
-        if self.var_stemming.get():
-            fname += "stem_"
+        elif self.mode == "g2p":
+            if self.var_state_elim.get():
+                fname += "rules_"
+
+            if self.var_stemming.get():
+                fname += "stem_"
 
         fname += f"{SMOOTHING_METHOD_KEY[self.var_smoothing.get()]}_n={self.var_n.get()}"
         
@@ -438,7 +452,7 @@ class TabTesting(Tab):
                         output_fdir=self.var_output_fdir.get(),
                         state_elim=self.var_state_elim.get(),
                         stemming=self.var_stemming.get(),
-                        mode=self.var_mode.get(),
+                        mode=self.mode,
                         validation=self.var_validation.get(),
                         save_log=self.var_save_log.get(),
                         save_result_=self.var_save_result.get(),

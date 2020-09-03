@@ -13,8 +13,9 @@ from subapp.component import FileList, FileOutput, StatusBar
 from subapp.core import build_ngram
 
 class TabTraining(Tab):
-    def __init__(self, master):
+    def __init__(self, master, mode):
         super().__init__(master)
+        self.mode = mode
 
         self.train_files = []
 
@@ -50,11 +51,6 @@ class TabTraining(Tab):
         self.var_follow_count.set(True)
         self.cbt_follow_count = tk.Checkbutton(self.frm_sidebar, variable=self.var_follow_count, text="Follow count")
         self.cbt_follow_count.grid(row=3, column=0, columnspan=2, sticky="nw")
-
-        self.var_mode = tk.StringVar()
-        self.var_mode.set("syl")
-        tk.Radiobutton(self.frm_sidebar, text="syl", variable=self.var_mode, value="syl").grid(row=4, column=0, sticky="nw")
-        tk.Radiobutton(self.frm_sidebar, text="g2p", variable=self.var_mode, value="g2p").grid(row=4, column=1, sticky="nw")
 
     
     def main(self):
@@ -145,7 +141,7 @@ class TabTraining(Tab):
                 lower_case=self.var_lower_case.get(),
                 build_cont_fdist=self.var_cont_count.get(),
                 build_follow_fdist=self.var_follow_count.get(),
-                mode=self.var_mode.get()
+                mode=self.mode
             )
         except Exception as e:
             print(f"Error:\n{e}")

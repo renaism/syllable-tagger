@@ -283,7 +283,10 @@ In  : symbol (str), tag (str), n_gram (NGram)
 Out : float
 '''
 def get_emission_prob(symbol, tag, n_gram):
-    return n_gram.emission_prob[tag][symbol]
+    if tag in n_gram.emission_prob:
+        return n_gram.emission_prob[tag][symbol]
+    else:
+        return 1
 
 
 '''

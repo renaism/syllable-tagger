@@ -44,6 +44,13 @@ In  : data_test (pd.DataFrame), n (int), prob_args (dict), args (dict)
 Out : pd.DataFrame
 '''
 def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl", g2p_map=None, validation=True, verbose=True):
+    if mode == "syl":
+        er_str = "ser"
+        unit_str = "syllable"
+    elif mode == "g2p":
+        er_str = "per"
+        unit_str = "phoneme"
+    
     start_t = time.time()
     
     total_words = len(data_test)
@@ -119,7 +126,7 @@ def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl"
         progress = i / total_words
 
         output = 'Words tagged: {}/{} ({:.2f}%)'.format(i, total_words, progress * 100)
-        output += ' | SER: {:.3f}%'.format(syllable_error_rate * 100)
+        output += ' | {}: {:.3f}%'.format(er_str.upper(), syllable_error_rate * 100)
         output += ' | Running time: {:.2f} s'.format(time.time() - start_t)
         if progress < 1:
             util.printv(verbose, output, end='\r', cp=cp)
@@ -143,10 +150,10 @@ def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl"
             'wrong_words': wrong_words,
             'correct_words': total_words - wrong_words,
             'word_error_rate': round(word_error_rate, 8),
-            'total_syllables': total_syllables,
-            'wrong_syllables': wrong_syllables,
-            'correct_syllables': total_syllables - wrong_syllables,
-            'syllable_error_rate': round(syllable_error_rate, 8),
+            f'total_{unit_str}s': total_syllables,
+            f'wrong_{unit_str}s': wrong_syllables,
+            f'correct_{unit_str}s': total_syllables - wrong_syllables,
+            f'{unit_str}_error_rate': round(syllable_error_rate, 8),
             'start_time': time.strftime('%Y/%m/%d - %H:%M:%S', time.localtime(start_t)),
             'end_time': time.strftime('%Y/%m/%d - %H:%M:%S', time.localtime(end_t)),
             'duration': round(end_t - start_t, 2)
@@ -231,3 +238,66 @@ def compare_results(result1, result2, result1_wrong=True, result2_wrong=False):
     return df[
         (((df['mismatch_count_1'] > 0) == result1_wrong) & ((df['mismatch_count_2'] > 0) == result2_wrong))
     ]
+
+
+def load_uncalculated_result(data, mode="syl"): 
+    total_words = len(data)
+    wrong_words = 0
+    total_syllables = 0
+    wrong_syllables = 0
+    syllable_error_rate = 0
+
+    mm_counts = []
+
+    i = 0
+    progress = 0
+
+    cp = util.ContinuousPrint()
+
+    for row in data.itertuples():
+        i += 1
+        syl_pred = row.prediction
+
+        # Compare the real and predicted syllables and count the differences
+        mm_count = 0
+        
+        if mode == "syl":
+            real_syllables = util.split_syllables(row.syllables)
+        elif mode == "g2p":
+            real_syllables = row.syllables.replace(".", "").replace("-", "")
+        
+        total_syllables += len(real_syllables)
+
+        if row.syllables != syl_pred:
+            wrong_words += 1
+            
+            if mode == "syl":
+                pred_syllables = util.split_syllables(syl_pred)
+            elif mode == "g2p":
+                pred_syllables = syl_pred.replace(".", "").replace("-", "")
+            
+            mm_count = mismatch_count(pred_syllables, real_syllables)
+
+            wrong_syllables += mm_count
+    
+        mm_counts.append(mm_count)
+    
+    syllable_error_rate = wrong_syllables / total_syllables
+    word_error_rate = wrong_words / total_words
+
+    data_result = data.copy()
+    data_result['mismatch_count'] = mm_counts
+
+    return {
+        'data': data_result,
+        'metadata': {
+            'total_words': total_words,
+            'wrong_words': wrong_words,
+            'correct_words': total_words - wrong_words,
+            'word_error_rate': round(word_error_rate, 8),
+            'total_syllables': total_syllables,
+            'wrong_syllables': wrong_syllables,
+            'correct_syllables': total_syllables - wrong_syllables,
+            'syllable_error_rate': round(syllable_error_rate, 8),
+        }
+    }

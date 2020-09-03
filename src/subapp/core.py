@@ -95,6 +95,13 @@ def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=
 
 
 def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fnames=None, lower_case=True, output_fname=None, output_fdir=None, state_elim=True, stemming=False, mode="syl", validation=True, save_log=True, save_result_=True, timestamp=True):
+    if mode == "syl":
+        er_str = "ser"
+        unit_str = "syllable"
+    elif mode == "g2p":
+        er_str = "per"
+        unit_str = "phoneme"
+    
     start_t = time.time()
     result_log = {
         "metadata": {
@@ -206,9 +213,11 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
 
     if save_log:
         # Average SER
-        avg_ser = sum(result_log["results"][i]['syllable_error_rate'] for i in result_log["results"]) / (len(result_log["results"]))
+        avg_ser = sum(result_log["results"][i][f'{unit_str}_error_rate'] for i in result_log["results"]) / (len(result_log["results"]))
+        avg_wer = sum(result_log["results"][i]['word_error_rate'] for i in result_log["results"]) / (len(result_log["results"]))
 
-        result_log['overall']['average_ser'] = round(avg_ser, 8)
+        result_log['overall'][f'average_{er_str}'] = round(avg_ser, 8)
+        result_log['overall']['average_wer'] = round(avg_wer, 8)
         result_log['overall']['start_time'] = time.strftime('%Y/%m/%d - %H:%M:%S', time.localtime(start_t))
         result_log['overall']['end_time'] = time.strftime('%Y/%m/%d - %H:%M:%S', time.localtime(end_t))
         result_log['overall']['duration'] = round(end_t - start_t, 2)
@@ -218,14 +227,22 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
         
         # For easy copy-paste to sheet
         with open(log_fpath, 'a') as log_file:
-            log_file.write('\n\n[Sheet copy-paste]\n\nTotal\tCorrect')
+            log_file.write('\n\n[Sheet copy-paste]')
+            log_file.write(f'\n\n{er_str.upper()}')
+            log_file.write('\nTotal\tCorrect')
             
             for i in result_log['results']:
-                total = result_log['results'][i]['total_syllables']
-                correct = result_log['results'][i]['correct_syllables']
+                total = result_log['results'][i][f'total_{unit_str}s']
+                correct = result_log['results'][i][f'correct_{unit_str}s']
                 log_file.write(f'\n{total}\t{correct}')
 
+            log_file.write('\n\nWER')
+            log_file.write('\nTotal\tCorrect')
 
+            for i in result_log['results']:
+                total = result_log['results'][i]['total_words']
+                correct = result_log['results'][i]['correct_words']
+                log_file.write(f'\n{total}\t{correct}')
         
         print(f'Log saved to "{log_fpath}"')
     
