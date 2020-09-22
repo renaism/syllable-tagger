@@ -94,7 +94,7 @@ def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=
     print("DONE in {:.2f} s".format(time.time() - start_t))
 
 
-def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fnames=None, lower_case=True, output_fname=None, output_fdir=None, state_elim=True, stemming=False, mode="syl", validation=True, save_log=True, save_result_=True, timestamp=True):
+def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fnames=None, lower_case=True, output_fname=None, output_fdir=None, state_elim=True, stemming=False, mode="syl", char_strips="", validation=True, save_log=True, save_result_=True, timestamp=True):
     if mode == "syl":
         er_str = "ser"
         unit_str = "syllable"
@@ -140,6 +140,7 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
             data_test_fnames[i],
             sep='\t',
             header=None,
+            index_col=False,
             names=['word', 'syllables'] if validation else ['word'],
             na_filter=False
         )
@@ -183,7 +184,7 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
         
         stemmer = Stemmer() if stemming else None
     
-        result = syllabify(data_test, n, prob_args, state_elim=state_elim, stemmer=stemmer, mode=mode, g2p_map=g2p_map, validation=validation)
+        result = syllabify(data_test, n, prob_args, state_elim=state_elim, stemmer=stemmer, mode=mode, g2p_map=g2p_map, char_strips=char_strips, validation=validation)
 
         # Clear n_gram from memory
         prob_args['n_gram'] = None

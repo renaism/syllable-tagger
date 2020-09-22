@@ -55,6 +55,8 @@ class TabTesting(Tab):
         self.var_sb_alpha = tk.StringVar()
         self.var_sb_alpha.set(0.4)
 
+        self.var_no_phoneme_sym = tk.BooleanVar()
+        self.var_no_phoneme_sym.set(True)
         self.var_validation = tk.BooleanVar()
         self.var_validation.set(True)
         self.var_save_log = tk.BooleanVar()
@@ -171,6 +173,10 @@ class TabTesting(Tab):
         self.cbx_smoothing_changed(None)
 
         # Additional params
+        if self.mode == "g2p":
+            self.cbt_no_phoneme_sym = tk.Checkbutton(self.frm_sidebar, variable=self.var_no_phoneme_sym, text="No-phoneme symbol (*)")
+            self.cbt_no_phoneme_sym.grid(columnspan=2, sticky="nw")
+
         self.cbt_validation = tk.Checkbutton(self.frm_sidebar, variable=self.var_validation, text="Validation")
         self.cbt_validation.grid(columnspan=2, sticky="nw")
 
@@ -453,6 +459,7 @@ class TabTesting(Tab):
                         state_elim=self.var_state_elim.get(),
                         stemming=self.var_stemming.get(),
                         mode=self.mode,
+                        char_strips="" if self.var_no_phoneme_sym.get() else "*",
                         validation=self.var_validation.get(),
                         save_log=self.var_save_log.get(),
                         save_result_=self.var_save_result.get(),

@@ -43,7 +43,7 @@ Desc: Syllabify each word in the test set
 In  : data_test (pd.DataFrame), n (int), prob_args (dict), args (dict)
 Out : pd.DataFrame
 '''
-def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl", g2p_map=None, validation=True, verbose=True):
+def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl", g2p_map=None, char_strips="", validation=True, verbose=True):
     if mode == "syl":
         er_str = "ser"
         unit_str = "syllable"
@@ -94,8 +94,6 @@ def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl"
             syl_pred = util.tags_to_segmented_word(row.word, tag_sequence)
         elif mode == "g2p":
             syl_pred = "".join(tag_sequence)
-        
-        syl_preds.append(syl_pred)
 
         # Compare the real and predicted syllables and count the differences
         mm_count = 0
@@ -122,6 +120,12 @@ def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl"
         
             mm_counts.append(mm_count)
             syllable_error_rate = wrong_syllables / total_syllables
+        
+        # Strip set characters from the output
+        for c in char_strips:
+            syl_pred = syl_pred.replace(c, "")
+        
+        syl_preds.append(syl_pred)
         
         progress = i / total_words
 
