@@ -55,8 +55,6 @@ class TabTesting(Tab):
         self.var_sb_alpha = tk.StringVar()
         self.var_sb_alpha.set(0.4)
 
-        self.var_no_phoneme_sym = tk.BooleanVar()
-        self.var_no_phoneme_sym.set(True)
         self.var_validation = tk.BooleanVar()
         self.var_validation.set(True)
         self.var_save_log = tk.BooleanVar()
@@ -65,6 +63,8 @@ class TabTesting(Tab):
         self.var_save_result.set(True)
         self.var_timestamp = tk.BooleanVar()
         self.var_timestamp.set(True)
+        self.var_no_phoneme_sym = tk.BooleanVar()
+        self.var_no_phoneme_sym.set(True)
 
         self.sidebar()
         self.main()
@@ -173,10 +173,6 @@ class TabTesting(Tab):
         self.cbx_smoothing_changed(None)
 
         # Additional params
-        if self.mode == "g2p":
-            self.cbt_no_phoneme_sym = tk.Checkbutton(self.frm_sidebar, variable=self.var_no_phoneme_sym, text="No-phoneme symbol (*)")
-            self.cbt_no_phoneme_sym.grid(columnspan=2, sticky="nw")
-
         self.cbt_validation = tk.Checkbutton(self.frm_sidebar, variable=self.var_validation, text="Validation")
         self.cbt_validation.grid(columnspan=2, sticky="nw")
 
@@ -188,6 +184,10 @@ class TabTesting(Tab):
 
         self.cbt_var_timestamp = tk.Checkbutton(self.frm_sidebar, variable=self.var_timestamp, text="Timestamp")
         self.cbt_var_timestamp.grid(columnspan=2, sticky="nw")
+
+        if self.mode == "g2p":
+            self.cbt_no_phoneme_sym = tk.Checkbutton(self.frm_sidebar, variable=self.var_no_phoneme_sym, text="Inc. no-phoneme symbol (*)")
+            self.cbt_no_phoneme_sym.grid(columnspan=2, sticky="nw")
     
 
     def main(self):
