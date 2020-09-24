@@ -9,7 +9,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import style
 
-from tkinter.filedialog import askopenfilenames, askdirectory
+from tkinter.filedialog import askopenfilenames, askopenfilename, askdirectory
 from subapp.component import FileList, FileOutput
 from subapp.core import augment_folds
 
@@ -21,34 +21,48 @@ class TabAugmentation(Tab):
 
         self.train_files = []
 
+        self.var_validation_fname = tk.StringVar()
+
         self.var_output_fname = tk.StringVar()
         self.var_output_fdir = tk.StringVar()
 
+        self.var_lower_case = tk.BooleanVar()
+        self.var_flip_onsets = tk.BooleanVar()
+        self.var_swap_consonants = tk.BooleanVar()
+        self.var_transpose_nucleus = tk.BooleanVar()
+        self.var_distinct = tk.BooleanVar()
+        self.var_distinct.set(True)
+        self.var_validation = tk.BooleanVar()
+
         self.sidebar()
         self.main()
+
+        self.toggle_validation()
     
 
     def sidebar(self):
         self.frm_sidebar = tk.LabelFrame(self, text="Options")
         self.frm_sidebar.grid(row=0, column=0, sticky="nsew", padx=style.SECTION_PADDING, pady=style.SECTION_PADDING)
 
-        self.var_lower_case = tk.BooleanVar()
         self.cbt_lower_case = tk.Checkbutton(self.frm_sidebar, variable=self.var_lower_case, text="Ensure lower case")
         self.cbt_lower_case.grid(sticky="nw")
         
         tk.Label(self.frm_sidebar, text="Methods").grid(sticky="nw")
         
-        self.var_flip_onsets = tk.BooleanVar()
         self.cbt_flip_onsets = tk.Checkbutton(self.frm_sidebar, variable=self.var_flip_onsets, text="Flip onsets")
         self.cbt_flip_onsets.grid(sticky="nw")
 
-        self.var_swap_consonants = tk.BooleanVar()
         self.cbt_swap_consonants = tk.Checkbutton(self.frm_sidebar, variable=self.var_swap_consonants, text="Swap consonants")
         self.cbt_swap_consonants.grid(sticky="nw")
 
-        self.var_transpose_nucleus = tk.BooleanVar()
         self.cbt_transpose_nucleus = tk.Checkbutton(self.frm_sidebar, variable=self.var_transpose_nucleus, text="Transpose nucleus")
         self.cbt_transpose_nucleus.grid(sticky="nw")
+
+        self.cbt_distinct = tk.Checkbutton(self.frm_sidebar, variable=self.var_distinct, text="Distinct")
+        self.cbt_distinct.grid(sticky="nw")
+
+        self.cbt_validation = tk.Checkbutton(self.frm_sidebar, variable=self.var_validation, command=self.toggle_validation, text="Validation")
+        self.cbt_validation.grid(sticky="nw")
 
 
     def main(self):
@@ -64,7 +78,17 @@ class TabAugmentation(Tab):
             file_list=self.train_files,
             file_types=[("Text Files", "*.txt"), ("CSV Files", "*.csv"), ("All Files", "*")]
         )
-        self.frm_train_file.grid(row=0, column=0, sticky="nsew")
+        self.frm_train_file.grid(sticky="nsew")
+
+        self.frm_validation_file = tk.LabelFrame(self.frm_main, text="Validation file")
+        self.frm_validation_file.grid(sticky="new")
+        self.frm_validation_file.columnconfigure(1, weight=1)
+
+        # Validation file
+        tk.Label(self.frm_validation_file, text="File name:").grid(row=0, column=0, sticky="w")
+        self.ent_validation_file = tk.Entry(self.frm_validation_file, state="readonly", textvariable=self.var_validation_fname)
+        self.ent_validation_file.grid(row=0, column=1, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
+        tk.Button(self.frm_validation_file, text="Browse", width=style.BUTTON_WIDTH, command=self.browse_validation_fname).grid(row=0, column=2, sticky="nsew", padx=style.ELEMENT_PADDING, pady=style.ELEMENT_PADDING)
       
         # Output area
         self.frm_file_output = FileOutput(
@@ -86,6 +110,21 @@ class TabAugmentation(Tab):
         self.btn_cancel = tk.Button(self.frm_op_btn_container, text="Cancel", width=style.BUTTON_WIDTH, state=tk.DISABLED)
         self.btn_cancel.grid(row=0, column=0, sticky="e", padx=style.ELEMENT_PADDING)
     
+
+    def toggle_validation(self):
+        if self.var_validation.get():
+            self.frm_validation_file.grid(sticky="new")
+        else:
+            self.frm_validation_file.grid_remove()
+    
+
+    def browse_validation_fname(self):
+        fname = askopenfilename(filetypes=[("Text Files", "*.txt"), ("All Files", "*")])
+
+        self.ent_validation_file.config(state=tk.NORMAL)
+        self.var_validation_fname.set(fname)
+        self.ent_validation_file.config(state="readonly")
+
 
     def auto_output_fname(self):
         fname = "train_aug"
@@ -111,6 +150,12 @@ class TabAugmentation(Tab):
 
             if i == len(ops)-1:
                 fname += "]"
+        
+        if self.var_distinct.get():
+            fname += "_dct"
+
+        if self.var_validation.get():
+            fname += "_val"
 
         self.var_output_fname.set(fname)
     
@@ -130,7 +175,11 @@ class TabAugmentation(Tab):
             self.status_bar.write("[!] File name can not be empty.\n")
             valid = False
 
-        if self.var_output_fdir.get() == '':
+        if self.var_validation.get() and self.var_validation_fname.get() == "":
+            self.status_bar.write("[!] No validation file selected.")
+            valid = False
+
+        if self.var_output_fdir.get() == "":
             self.status_bar.write("[!] Directory is not selected yet.\n")
             valid = False
         elif not os.path.isdir(self.var_output_fdir.get()):
@@ -159,7 +208,10 @@ class TabAugmentation(Tab):
                 lower_case=self.var_lower_case.get(),
                 flip_onsets_=self.var_flip_onsets.get(),
                 swap_consonants_=self.var_swap_consonants.get(),
-                transpose_nucleus_=self.var_transpose_nucleus.get()
+                transpose_nucleus_=self.var_transpose_nucleus.get(),
+                distinct=self.var_distinct.get(),
+                validation=self.var_validation.get(),
+                validation_fname=self.var_validation_fname.get()
             )
         except Exception as e:
             print(f"Error:\n{e}")

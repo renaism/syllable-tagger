@@ -6,7 +6,7 @@ import ngram
 import utility as util
 
 from training.preprocess import tokenize, tokenize_g2p, pad_tokens
-from training.augmentation import flip_onsets, swap_consonants, transpose_nucleus
+from training.augmentation import flip_onsets, swap_consonants, transpose_nucleus, validate_augmentation
 from testing.syllabification import syllabify, save_result
 from testing.stemmer import Stemmer
 
@@ -250,7 +250,7 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
     print("DONE in {:.2f} s".format(end_t - start_t))
 
 
-def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True, flip_onsets_=False, swap_consonants_=False, transpose_nucleus_=False):
+def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True, flip_onsets_=False, swap_consonants_=False, transpose_nucleus_=False, distinct=True, validation=False, validation_fname=""):
     start_t = time.time()
 
     fold_list = get_folds_from_fnames(data_train_fnames)
@@ -324,6 +324,25 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
         
         # Combine all augmented data
         data_train_aug = pd.concat(data_stack[1:], ignore_index=True)
+
+        if distinct:
+            data_train_aug = data_train_aug.drop_duplicates("word").reset_index(drop=True)
+
+        if validation:
+            print("Validating augmentation...", end="\r")
+
+            illegal_sequences = pd.read_csv(
+                validation_fname,
+                sep='\t',
+                header=None,
+                names=['sequence'],
+                na_filter=False
+            )
+
+            data_train_aug = validate_augmentation(data_train_aug, illegal_sequences)
+
+            print("Validating augmentation DONE in {:.2f} s".format(time.time() - start_t))
+
         print(f"Augmented data train length: {len(data_train_aug)} words")
 
         # Save the n-gram to a file

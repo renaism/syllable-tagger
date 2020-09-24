@@ -219,3 +219,24 @@ def transpose_nucleus(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS
     
     # Convert to DataFrame and return it
     return pd.DataFrame(new_data, columns=['word', 'syllables'])
+
+
+def validate_augmentation(data_train_aug, illegal_sequences):
+    new_data = []
+
+    for row in data_train_aug.itertuples():
+        valid = True
+
+        for seq in illegal_sequences["sequence"]:
+            if seq in row.syllables:
+                print(f"Illegal sequence '{seq}' found in word {row.word}")
+
+                valid = False
+                break
+        
+        if not valid:
+            continue
+            
+        new_data.append((row.word, row.syllables))
+    
+    return pd.DataFrame(new_data, columns=['word', 'syllables'])

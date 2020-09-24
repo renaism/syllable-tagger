@@ -21,10 +21,18 @@ class TabTraining(Tab):
 
         self.var_output_fname = tk.StringVar()
         self.var_output_fdir = tk.StringVar()
+
+        self.var_n = tk.IntVar()
+        self.var_n.set(5)
+
+        self.var_lower_case = tk.BooleanVar()
+        self.var_cont_count = tk.BooleanVar()
+        self.var_cont_count.set(True)
+        self.var_follow_count = tk.BooleanVar()
+        self.var_follow_count.set(True)
         
         self.sidebar()
         self.main()
-        #self.status_bar()
 
 
     def sidebar(self):
@@ -33,22 +41,15 @@ class TabTraining(Tab):
 
         tk.Label(self.frm_sidebar, text="Maximum n").grid(row=0, column=0, sticky="nw")
 
-        self.var_n = tk.IntVar()
-        self.var_n.set(5)
         self.ent_n = tk.Spinbox(self.frm_sidebar, textvariable=self.var_n, from_=1, to=10, width=style.DIGIT_ENTRY_WIDTH)
         self.ent_n.grid(row=0, column=1, sticky="ne")
 
-        self.var_lower_case = tk.BooleanVar()
         self.cbt_lower_case = tk.Checkbutton(self.frm_sidebar, variable=self.var_lower_case, text="Ensure lower case")
         self.cbt_lower_case.grid(row=1, column=0, sticky="nw")
 
-        self.var_cont_count = tk.BooleanVar()
-        self.var_cont_count.set(True)
         self.cbt_cont_count = tk.Checkbutton(self.frm_sidebar, variable=self.var_cont_count, text="Continuation count")
         self.cbt_cont_count.grid(row=2, column=0, columnspan=2, sticky="nw")
 
-        self.var_follow_count = tk.BooleanVar()
-        self.var_follow_count.set(True)
         self.cbt_follow_count = tk.Checkbutton(self.frm_sidebar, variable=self.var_follow_count, text="Follow count")
         self.cbt_follow_count.grid(row=3, column=0, columnspan=2, sticky="nw")
 
