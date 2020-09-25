@@ -229,8 +229,6 @@ def validate_augmentation(data_train_aug, illegal_sequences):
 
         for seq in illegal_sequences["sequence"]:
             if seq in row.syllables:
-                print(f"Illegal sequence '{seq}' found in word {row.word}")
-
                 valid = False
                 break
         

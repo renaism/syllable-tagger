@@ -13,9 +13,8 @@ from subapp.component import FileList, FileOutput, StatusBar
 from subapp.core import build_ngram
 
 class TabTraining(Tab):
-    def __init__(self, master, mode):
+    def __init__(self, master):
         super().__init__(master)
-        self.mode = mode
 
         self.train_files = []
 

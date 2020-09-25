@@ -20,9 +20,8 @@ SMOOTHING_METHOD_KEY = {
 } 
 
 class TabTesting(Tab):
-    def __init__(self, master, mode):
+    def __init__(self, master):
         super().__init__(master)
-        self.mode = mode
 
         self.test_files = []
         self.ngram_files = []

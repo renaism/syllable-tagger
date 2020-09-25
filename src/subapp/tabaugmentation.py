@@ -58,6 +58,8 @@ class TabAugmentation(Tab):
         self.cbt_transpose_nucleus = tk.Checkbutton(self.frm_sidebar, variable=self.var_transpose_nucleus, text="Transpose nucleus")
         self.cbt_transpose_nucleus.grid(sticky="nw")
 
+        tk.Label(self.frm_sidebar, text="Other settings").grid(sticky="nw")
+
         self.cbt_distinct = tk.Checkbutton(self.frm_sidebar, variable=self.var_distinct, text="Distinct")
         self.cbt_distinct.grid(sticky="nw")
 
@@ -108,7 +110,7 @@ class TabAugmentation(Tab):
         self.btn_start.grid(row=0, column=1, sticky="e")
 
         self.btn_cancel = tk.Button(self.frm_op_btn_container, text="Cancel", width=style.BUTTON_WIDTH, state=tk.DISABLED)
-        self.btn_cancel.grid(row=0, column=0, sticky="e", padx=style.ELEMENT_PADDING)
+        #self.btn_cancel.grid(row=0, column=0, sticky="e", padx=style.ELEMENT_PADDING)
     
 
     def toggle_validation(self):

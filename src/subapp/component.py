@@ -89,8 +89,14 @@ class StatusBar(tk.Frame):
         self.master = master
         self.repeat_line = False
 
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
         self.status_text = ScrolledText(self, width=0, height=0, state=tk.DISABLED)
-        self.status_text.pack(expand=True, fill=tk.BOTH)
+        self.status_text.grid(columnspan=2, sticky="nsew")
+
+        tk.Button(self, text="Copy", width=style.BUTTON_WIDTH, command=self.copy).grid(row=1, column=0, padx=style.ELEMENT_PADDING, sticky="se")
+        tk.Button(self, text="Clear", width=style.BUTTON_WIDTH, command=self.clear).grid(row=1, column=1, padx=style.ELEMENT_PADDING, sticky="se")
     
     def write(self, string):
         self.status_text.config(state=tk.NORMAL)
@@ -106,6 +112,23 @@ class StatusBar(tk.Frame):
         
         self.status_text.config(state=tk.DISABLED)
         self.status_text.see(tk.END)
+    
+
+    def copy(self):
+        txt = self.status_text.get("1.0", tk.END)
+        
+        c = tk.Tk()
+        c.withdraw()
+        c.clipboard_clear()
+        c.clipboard_append(txt)
+        c.update()
+        c.destroy()
+
+
+    def clear(self):
+        self.status_text.config(state=tk.NORMAL)
+        self.status_text.delete("1.0", tk.END)
+        self.status_text.config(state=tk.DISABLED)
 
 
 class ConfigText(tk.Frame):

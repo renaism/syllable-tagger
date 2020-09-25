@@ -69,10 +69,12 @@ def create_config():
         "diphtongs": util.tags_to_str(DIPHTONGS_DEFAULT)
     }
 
+    '''
     config["G2P"] = {}
 
     for g, p in G2P_DEFAULT.items():
         config["G2P"][g] = util.tags_to_str(p)
+    '''    
 
     return config
 
