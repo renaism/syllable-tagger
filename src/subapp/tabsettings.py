@@ -41,9 +41,9 @@ class TabSettings(tk.Frame):
 
         # Buttons
         self.frm_buttons = tk.Frame(self.frm_main)
-        self.frm_buttons.grid(sticky="se")
+        self.frm_buttons.grid(sticky="se", pady=style.ELEMENT_PADDING)
 
-        tk.Button(self.frm_buttons, text="Apply", width=style.BUTTON_WIDTH, command=self.apply_settings).grid(row=0, column=1, sticky="ne", padx=style.ELEMENT_PADDING)
+        tk.Button(self.frm_buttons, text="Apply", width=style.BUTTON_WIDTH, command=self.apply_settings).grid(row=0, column=1, sticky="ne")
         tk.Button(self.frm_buttons, text="Revert", width=style.BUTTON_WIDTH, command=self.fill).grid(row=0, column=0, sticky="ne", padx=style.ELEMENT_PADDING)
     
 

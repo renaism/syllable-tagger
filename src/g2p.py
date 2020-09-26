@@ -2,7 +2,7 @@ import tkinter as tk
 from app import App
 
 APPNAME    = "Indonesian G2P"
-APPVERSION = "0.1a" 
+APPVERSION = "0.2b" 
 
 if __name__ == "__main__":
     # Main window configuration

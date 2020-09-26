@@ -86,7 +86,7 @@ class TabTraining(Tab):
         self.btn_start.grid(row=0, column=1, sticky="e")
 
         self.btn_cancel = tk.Button(self.frm_op_btn_container, width=style.BUTTON_WIDTH, text="Cancel", command=self.btn_cancel_click, state=tk.DISABLED)
-        self.btn_cancel.grid(row=0, column=0, sticky="e")
+        self.btn_cancel.grid(row=0, column=0, sticky="e", padx=style.ELEMENT_PADDING)
     
 
     def status_bar(self):

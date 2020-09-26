@@ -185,7 +185,7 @@ class TabTesting(Tab):
         self.cbt_var_timestamp.grid(columnspan=2, sticky="nw")
 
         if self.mode == "g2p":
-            self.cbt_no_phoneme_sym = tk.Checkbutton(self.frm_sidebar, variable=self.var_no_phoneme_sym, text="Inc. no-phoneme symbol (*)")
+            self.cbt_no_phoneme_sym = tk.Checkbutton(self.frm_sidebar, variable=self.var_no_phoneme_sym, text="Inc. no-phoneme symbol")
             self.cbt_no_phoneme_sym.grid(columnspan=2, sticky="nw")
     
 
@@ -239,7 +239,7 @@ class TabTesting(Tab):
         self.btn_start.grid(row=0, column=1, sticky="e")
 
         self.btn_cancel = tk.Button(self.frm_op_btn_container, width=style.BUTTON_WIDTH, text="Cancel", command=self.btn_cancel_click, state=tk.DISABLED)
-        self.btn_cancel.grid(row=0, column=0, sticky="e")
+        self.btn_cancel.grid(row=0, column=0, sticky="e", padx=style.ELEMENT_PADDING)
     
 
     def status_bar(self):
