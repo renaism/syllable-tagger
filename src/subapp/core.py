@@ -38,7 +38,7 @@ def get_folds_from_fnames(fnames):
         None
 
 
-def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=True, build_cont_fdist=True, build_follow_fdist=True, mode="syl"):
+def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=True, build_cont_fdist=True, build_follow_fdist=True, mode="syl", stop=lambda: False):
     start_t = time.time()
 
     fold_list = get_folds_from_fnames(data_train_fnames)
@@ -80,6 +80,9 @@ def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=
 
         ngram_fold = ngram.NGram(tokens, n=n_max, build_cont_fdist=build_cont_fdist, build_follow_fdist=build_follow_fdist, build_emission_prob=build_emission_prob, data_train=data_train, verbose=True)
 
+        if stop():
+            return
+    
         # Save the n-gram to a file
         fname = output_fname
 
@@ -94,7 +97,7 @@ def build_ngram(n_max, data_train_fnames, output_fname, output_fdir, lower_case=
     print("DONE in {:.2f} s".format(time.time() - start_t))
 
 
-def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fnames=None, lower_case=True, output_fname=None, output_fdir=None, state_elim=True, stemming=False, mode="syl", char_strips="", validation=True, save_log=True, save_result_=True, timestamp=True):
+def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fnames=None, lower_case=True, output_fname=None, output_fdir=None, state_elim=True, stemming=False, mode="syl", char_strips="", validation=True, save_log=True, save_result_=True, timestamp=True, stop=lambda: False):
     if mode == "syl":
         er_str = "ser"
         unit_str = "syllable"
@@ -184,11 +187,14 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
         
         stemmer = Stemmer() if stemming else None
     
-        result = syllabify(data_test, n, prob_args, state_elim=state_elim, stemmer=stemmer, mode=mode, g2p_map=g2p_map, char_strips=char_strips, validation=validation)
+        result = syllabify(data_test, n, prob_args, state_elim=state_elim, stemmer=stemmer, mode=mode, g2p_map=g2p_map, char_strips=char_strips, validation=validation, stop=stop)
 
         # Clear n_gram from memory
         prob_args['n_gram'] = None
         prob_args['n_gram_aug'] = None
+
+        if stop():
+            return
 
         if save_log:
             result_log["results"][idx] = result["metadata"]

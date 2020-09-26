@@ -40,10 +40,10 @@ def mismatch_count(pred_syl, truth_syl):
 
 '''
 Desc: Syllabify each word in the test set
-In  : data_test (pd.DataFrame), n (int), prob_args (dict), args (dict)
+In  : data_test (pd.DataFrame), n (int), prob_args (dict), *args
 Out : pd.DataFrame
 '''
-def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl", g2p_map=None, char_strips="", validation=True, verbose=True):
+def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl", g2p_map=None, char_strips="", validation=True, verbose=True, stop=lambda: False):
     if mode == "syl":
         er_str = "ser"
         unit_str = "syllable"
@@ -85,6 +85,9 @@ def syllabify(data_test, n, prob_args, state_elim=True, stemmer=None, mode="syl"
     cp = util.ContinuousPrint()
 
     for row in data_test.itertuples():
+        if stop():
+            return
+        
         i += 1
 
         # Tag the letters of the word

@@ -238,8 +238,8 @@ class TabTesting(Tab):
         self.btn_start = tk.Button(self.frm_op_btn_container, width=style.BUTTON_WIDTH, text="Start", command=self.btn_start_click)
         self.btn_start.grid(row=0, column=1, sticky="e")
 
-        self.btn_cancel = tk.Button(self.frm_op_btn_container, width=style.BUTTON_WIDTH, text="Cancel", state=tk.DISABLED)
-        #self.btn_cancel.grid(row=0, column=0, sticky="e")
+        self.btn_cancel = tk.Button(self.frm_op_btn_container, width=style.BUTTON_WIDTH, text="Cancel", command=self.btn_cancel_click, state=tk.DISABLED)
+        self.btn_cancel.grid(row=0, column=0, sticky="e")
     
 
     def status_bar(self):
@@ -407,10 +407,16 @@ class TabTesting(Tab):
         self.status_bar.write("\n")
         
         if valid:
-            threading.Thread(target=self.syllabify_folds_worker).start()
+            self.stop_flag = False
+            threading.Thread(target=self.syllabify_folds_worker, args=(lambda: self.stop_flag,)).start()
     
 
-    def syllabify_folds_worker(self):
+    def btn_cancel_click(self):
+        self.stop_flag = True
+        self.btn_cancel.config(state=tk.DISABLED)
+
+
+    def syllabify_folds_worker(self, stop):
         self.master.toggle_other_tabs(False)
         self.btn_start.config(state=tk.DISABLED)
         self.btn_cancel.config(state=tk.NORMAL)
@@ -462,11 +468,19 @@ class TabTesting(Tab):
                         validation=self.var_validation.get(),
                         save_log=self.var_save_log.get(),
                         save_result_=self.var_save_result.get(),
-                        timestamp=self.var_timestamp.get()
+                        timestamp=self.var_timestamp.get(),
+                        stop=stop
                     )
                 except Exception as e:
                     print(f"Error:\n{e}")
                     print(traceback.format_exc())
+                
+                if stop():
+                    print("\nTask terminated by user.")
+                    break
+
+            if stop():
+                break 
 
         sys.stdout = old_stdout
 
