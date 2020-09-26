@@ -2,6 +2,10 @@ __pycache__
 .vscode
 .venv
 build
+data
 dist
+logs
+models
+notebooks
 config.ini
 _ignore*
