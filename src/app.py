@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 import style
+import os
 
 from subapp.tabaugmentation import TabAugmentation
 from subapp.tabtraining import TabTraining
@@ -15,6 +16,7 @@ class App(tk.Frame):
         self.master = master
         self.mode = mode
         self.master.minsize(width=style.WINDOW_MIN_WIDTH, height=style.WINDOW_MIN_HEIGHT)
+        self.master.iconbitmap(os.path.dirname(os.path.realpath(__file__)) + "/icon.ico")
         self.pack(expand=True, fill=tk.BOTH)
         self.initialize_widgets()
 

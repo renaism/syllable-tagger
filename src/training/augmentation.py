@@ -88,11 +88,14 @@ Desc: Batch for flip_onsets_word with a set of words
 In  : data_train (pd.DataFrame)
 Out : pd.DataFrame
 '''
-def flip_onsets(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT):
+def flip_onsets(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT, stop=lambda: False):
     # List for storing new words
     new_data = []
 
     for syl_word in data_train['syllables']:
+        if stop():
+            return
+        
         flipped_word = flip_onsets_word(syl_word, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT)
 
         if flipped_word:
@@ -157,10 +160,13 @@ Desc: Batch for swap_consonants_word with a set of words
 In  : data_train (pd.DataFrame)
 Out : pd.DataFrame
 '''
-def swap_consonants(data_train):
+def swap_consonants(data_train, stop=lambda: False):
     new_data = []
 
     for syl_word in data_train['syllables']:
+        if stop():
+            return
+        
         new_data += swap_consonants_word(syl_word)
     
     # Convert to DataFrame and return it
@@ -208,10 +214,13 @@ Desc: Batch for transpose_nucleus_word with a set of words
 In  : data_train (pd.DataFrame)
 Out : pd.DataFrame
 '''
-def transpose_nucleus(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT):
+def transpose_nucleus(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT, stop=lambda: False):
     new_data = []
 
     for syl_word in data_train['syllables']:
+        if stop():
+            return
+        
         transposed_word = transpose_nucleus_word(syl_word, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT)
 
         if transposed_word:
@@ -221,10 +230,13 @@ def transpose_nucleus(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS
     return pd.DataFrame(new_data, columns=['word', 'syllables'])
 
 
-def validate_augmentation(data_train_aug, illegal_sequences):
+def validate_augmentation(data_train_aug, illegal_sequences, stop=lambda: False):
     new_data = []
 
     for row in data_train_aug.itertuples():
+        if stop():
+            return
+
         valid = True
 
         for seq in illegal_sequences["sequence"]:

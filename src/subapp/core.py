@@ -250,7 +250,7 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
     print("DONE in {:.2f} s".format(end_t - start_t))
 
 
-def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True, flip_onsets_=False, swap_consonants_=False, transpose_nucleus_=False, distinct=True, validation=False, validation_fname=""):
+def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True, flip_onsets_=False, swap_consonants_=False, transpose_nucleus_=False, distinct=True, validation=False, validation_fname="", stop=lambda: False):
     start_t = time.time()
 
     fold_list = get_folds_from_fnames(data_train_fnames)
@@ -290,37 +290,46 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
         data_stack = [data_train]
 
         if flip_onsets_:
+            i_start_t = time.time()
+
             print("Flipping onsets...", end="\r")
             new_data = []
 
             for data in data_stack:
-                new_data.append(flip_onsets(data, vowels=vowels, semi_vowels=semi_vowels, diphtongs=diphtongs))
+                new_data.append(flip_onsets(data, vowels=vowels, semi_vowels=semi_vowels, diphtongs=diphtongs, stop=stop))
             
             data_stack += new_data
 
-            print("Flipping onsets DONE in {:.2f} s".format(time.time() - start_t))
+            if stop(): return
+            print("Flipping onsets DONE in {:.2f} s".format(time.time() - i_start_t))
         
         if swap_consonants_:
+            i_start_t = time.time()
+
             print("Swapping consonants...", end="\r")
             new_data = []
 
             for data in data_stack:
-                new_data.append(swap_consonants(data))
+                new_data.append(swap_consonants(data, stop=stop))
             
             data_stack += new_data
 
-            print("Swapping consonants DONE in {:.2f} s".format(time.time() - start_t))
+            if stop(): return
+            print("Swapping consonants DONE in {:.2f} s".format(time.time() - i_start_t))
         
         if transpose_nucleus_:
+            i_start_t = time.time()
+
             print("Transposing nucleus...", end="\r")
             new_data = []
 
             for data in data_stack:
-                new_data.append(transpose_nucleus(data, vowels=vowels, semi_vowels=semi_vowels, diphtongs=diphtongs))
+                new_data.append(transpose_nucleus(data, vowels=vowels, semi_vowels=semi_vowels, diphtongs=diphtongs, stop=stop))
             
             data_stack += new_data
 
-            print("Transposing nucleus DONE in {:.2f} s".format(time.time() - start_t))
+            if stop(): return
+            print("Transposing nucleus DONE in {:.2f} s".format(time.time() - i_start_t))
         
         # Combine all augmented data
         data_train_aug = pd.concat(data_stack[1:], ignore_index=True)
@@ -329,6 +338,8 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
             data_train_aug = data_train_aug.drop_duplicates("word").reset_index(drop=True)
 
         if validation:
+            i_start_t = time.time()
+
             print("Validating augmentation...", end="\r")
 
             illegal_sequences = pd.read_csv(
@@ -339,9 +350,10 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
                 na_filter=False
             )
 
-            data_train_aug = validate_augmentation(data_train_aug, illegal_sequences)
+            data_train_aug = validate_augmentation(data_train_aug, illegal_sequences, stop=stop)
 
-            print("Validating augmentation DONE in {:.2f} s".format(time.time() - start_t))
+            if stop(): return
+            print("Validating augmentation DONE in {:.2f} s".format(time.time() - i_start_t))
 
         print(f"Augmented data train length: {len(data_train_aug)} words")
 

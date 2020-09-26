@@ -109,8 +109,8 @@ class TabAugmentation(Tab):
         self.btn_start = tk.Button(self.frm_op_btn_container, text="Start", width=style.BUTTON_WIDTH, command=self.btn_start_click)
         self.btn_start.grid(row=0, column=1, sticky="e")
 
-        self.btn_cancel = tk.Button(self.frm_op_btn_container, text="Cancel", width=style.BUTTON_WIDTH, state=tk.DISABLED)
-        #self.btn_cancel.grid(row=0, column=0, sticky="e", padx=style.ELEMENT_PADDING)
+        self.btn_cancel = tk.Button(self.frm_op_btn_container, text="Cancel", width=style.BUTTON_WIDTH, command=self.btn_cancel_click, state=tk.DISABLED)
+        self.btn_cancel.grid(row=0, column=0, sticky="e", padx=style.ELEMENT_PADDING)
     
 
     def toggle_validation(self):
@@ -191,10 +191,16 @@ class TabAugmentation(Tab):
         self.status_bar.write("\n")
 
         if valid:
-            threading.Thread(target=self.augment_folds_worker).start()
+            self.stop_flag = False
+            threading.Thread(target=self.augment_folds_worker, args=(lambda: self.stop_flag,)).start()
     
 
-    def augment_folds_worker(self):
+    def btn_cancel_click(self):
+        self.stop_flag = True
+        self.btn_cancel.config(state=tk.DISABLED)
+
+
+    def augment_folds_worker(self, stop):
         self.master.toggle_other_tabs(False)
         self.btn_start.config(state=tk.DISABLED)
         self.btn_cancel.config(state=tk.NORMAL)
@@ -213,11 +219,15 @@ class TabAugmentation(Tab):
                 transpose_nucleus_=self.var_transpose_nucleus.get(),
                 distinct=self.var_distinct.get(),
                 validation=self.var_validation.get(),
-                validation_fname=self.var_validation_fname.get()
+                validation_fname=self.var_validation_fname.get(),
+                stop=stop
             )
         except Exception as e:
             print(f"Error:\n{e}")
             print(traceback.format_exc())
+        
+        if stop():
+            print("\nTask terminated by user.")
 
         sys.stdout = old_stdout
 
