@@ -256,7 +256,7 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
     print("DONE in {:.2f} s".format(end_t - start_t))
 
 
-def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True, flip_onsets_=False, swap_consonants_=False, transpose_nucleus_=False, distinct=True, validation=False, validation_fname="", stop=lambda: False):
+def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True, flip_onsets_=False, swap_consonants_=False, transpose_nucleus_=False, distinct=True, validation=False, validation_fname="", include_original=False, stop=lambda: False):
     start_t = time.time()
 
     fold_list = get_folds_from_fnames(data_train_fnames)
@@ -338,7 +338,10 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
             print("Transposing nucleus DONE in {:.2f} s".format(time.time() - i_start_t))
         
         # Combine all augmented data
-        data_train_aug = pd.concat(data_stack[1:], ignore_index=True)
+        if not include_original:
+            data_stack = data_stack[1:]
+        
+        data_train_aug = pd.concat(data_stack, ignore_index=True)
 
         if distinct:
             data_train_aug = data_train_aug.drop_duplicates("word").reset_index(drop=True)

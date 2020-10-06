@@ -33,6 +33,7 @@ class TabAugmentation(Tab):
         self.var_distinct = tk.BooleanVar()
         self.var_distinct.set(True)
         self.var_validation = tk.BooleanVar()
+        self.var_orignal = tk.BooleanVar()
 
         self.sidebar()
         self.main()
@@ -65,6 +66,9 @@ class TabAugmentation(Tab):
 
         self.cbt_validation = tk.Checkbutton(self.frm_sidebar, variable=self.var_validation, command=self.toggle_validation, text="Validation")
         self.cbt_validation.grid(sticky="nw")
+
+        self.cbt_distinct = tk.Checkbutton(self.frm_sidebar, variable=self.var_orignal, text="Inc. original words")
+        self.cbt_distinct.grid(sticky="nw")
 
 
     def main(self):
@@ -220,6 +224,7 @@ class TabAugmentation(Tab):
                 distinct=self.var_distinct.get(),
                 validation=self.var_validation.get(),
                 validation_fname=self.var_validation_fname.get(),
+                include_original=self.var_orignal.get(),
                 stop=stop
             )
         except Exception as e:

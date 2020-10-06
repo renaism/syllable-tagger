@@ -2,7 +2,7 @@ import tkinter as tk
 from app import App
 
 APPNAME    = "Indonesian Syllable Tagger"
-APPVERSION = "0.4b" 
+APPVERSION = "0.5b" 
 
 if __name__ == "__main__":
     # Main window configuration

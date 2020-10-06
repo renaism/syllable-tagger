@@ -1,5 +1,5 @@
 ## INA-SYL Manual
-Version: 0.4b
+Version: 0.5b
 
 # Training
 
@@ -114,6 +114,7 @@ Spesifikasi data train yang digunakan sama dengan bagian Training
 
 - `Distinct`: Memastikan semua kata hasil augmentasi unik (tidak ada duplikat).
 - `Validation`: Memvalidasi setiap kata hasil augmentasi terhadap daftar sekuen grafem ilegal. Jika opsi dipilih, file teks (\*.txt) yang berisi daftar sekuen grafem ilegal harus dipilih.
+- `Inc. original words`: Mengikutsertakan kata asli ke hasil augmentasi.
 
 ## E. File data train
 
