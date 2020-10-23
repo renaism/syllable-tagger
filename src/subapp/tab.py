@@ -6,7 +6,7 @@ from subapp.component import StatusBar
 class Tab(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
-        self.master = master.master
+        self.master = master
         self.mode = self.master.mode
         self.status_bar = self.master.status_bar
 
