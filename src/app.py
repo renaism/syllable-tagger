@@ -10,9 +10,6 @@ from subapp.tabsettings import TabSettings
 
 from subapp.component import StatusBar
 
-APPNAME    = "INASYLLG2P"
-APPVERSION = "0.6b" 
-
 class App(tk.Frame):
     def __init__(self, master, mode="both"):
         super().__init__(master)
@@ -40,7 +37,7 @@ class App(tk.Frame):
             self.rbtn_g2p.grid(row=0, column=2, sticky="nw")
         
         # Version text
-        tk.Label(self, text=f"Version {APPVERSION}").grid(row=0, column=1, sticky="ne")
+        tk.Label(self, text=f"Version {master.version}").grid(row=0, column=1, sticky="ne")
         
         # Paned window, for tab area and status bar
         self.frm_paned_window_wrapper = tk.Frame(self)
@@ -130,11 +127,3 @@ class SubApp(tk.Frame):
         if self.app.mode == "both":
             self.app.rbtn_syl.config(state=state)
             self.app.rbtn_g2p.config(state=state)
-
-
-if __name__ == "__main__":
-    # Main window configuration
-    root = tk.Tk()
-    root.title(f"{APPNAME}")
-    app = App(master=root, mode="both")
-    app.mainloop()

@@ -3,10 +3,10 @@
 block_cipher = None
 
 
-a = Analysis(['src\\app.py'],
+a = Analysis(['src\\sylg2p.py'],
              pathex=['src'],
              binaries=[],
-             datas=[('src\\icon.ico', '.')],
+             datas=[('src\\icon.ico', '.'), ('src\\testing\\kata-dasar.txt', 'testing')],
              hiddenimports=['pkg_resources.py2_warn'],
              hookspath=[],
              runtime_hooks=[],
