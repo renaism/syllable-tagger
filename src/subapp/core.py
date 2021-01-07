@@ -344,7 +344,7 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
         data_train_aug = pd.concat(data_stack, ignore_index=True)
 
         if distinct:
-            data_train_aug = data_train_aug.drop_duplicates("word").reset_index(drop=True)
+            data_train_aug = data_train_aug.drop_duplicates("syllables").reset_index(drop=True)
 
         if validation:
             i_start_t = time.time()

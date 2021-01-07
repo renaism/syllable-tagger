@@ -95,7 +95,10 @@ def gkn_discount(n_gram, n, c, ceil=3, highest_order=True):
         c_freq = n_gram.get_continuation_fdist(n).r_Nr()
     
     c = min(c, ceil)
-    d = c - (c+1) * (c_freq[c+1] / c_freq[c])*(c_freq[1] / (c_freq[1] + 2*c_freq[2]))
+    try:
+        d = c - (c+1) * (c_freq[c+1] / c_freq[c])*(c_freq[1] / (c_freq[1] + 2*c_freq[2]))
+    except ZeroDivisionError:
+        print(f"Divide by 0: n={n}, c={c}, ceil={ceil}")
     
     return max(d, 0)
 
