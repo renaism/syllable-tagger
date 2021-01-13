@@ -230,12 +230,7 @@ def transpose_nucleus(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS
     return pd.DataFrame(new_data, columns=['word', 'syllables'])
 
 
-def acronym(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT, stop=lambda: False):
-    # Check if a syllable only contains a single vowel
-    def is_single_vowel(syl):
-        syl_parts = extract_syllable(syl, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT)
-        return syl_parts[0] == "" and syl_parts[2] == ""
-    
+def acronym(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT, stop=lambda: False):    
     # Get list of syllable + new syllable from a syllabified text
     def get_syllable_list(syl_text):
         # Get the list of syllables
@@ -243,30 +238,53 @@ def acronym(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, 
 
         # Remove duplicates
         syl_list = list(dict.fromkeys(syl_list))
-
-        # Remove syllables that only contains a single vowel
-        syl_list = list(filter(lambda x: not is_single_vowel(x), syl_list))
+        
+        # Extract syllable parts from each syllable
+        for i in range(len(syl_list)):
+            syl_list[i] = extract_syllable(syl_list[i], vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT)
 
         # Augment new syllables
         new_syl = []
 
-        for i in range(len(syl_list)-1):
-            syl_parts_i = extract_syllable(syl_list[i], vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT)
+        for i in range(len(syl_list)):
+            # If the syllable is an open syllable (ends with a vowel), add the onset from the next syllable (if any)
+            if syl_list[i][2] == "" and i+1 < len(syl_list):                
+                if syl_list[i+1][0] != "":
+                    new_syl.append((syl_list[i][0], syl_list[i][1], syl_list[i+1][0][0]))
 
-            # Skip if the syllable has a coda (ending consonant)
-            if syl_parts_i[2] != "":
-                continue
-            
-            syl_parts_next = extract_syllable(syl_list[i+1], vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT)
-
-            # Skip if the next syllable has no onset (leading consonant)
-            if syl_parts_next[0] == "":
-                continue
-            
-            # Make new syllable based on the current syllable and the next syllable
-            new_syl.append(f"{syl_list[i]}{syl_parts_next[0]}")
+            # If the syllable is a closed syllable (ends with a consonant), remove the coda from the syllable
+            elif syl_list[i][2] != "":
+                new_syl.append((syl_list[i][0], syl_list[i][1], ""))
         
-        return syl_list + new_syl
+        syl_list += new_syl
+
+        # Remove syllables that only contains a single vowel (no consonant)
+        syl_list = list(filter(lambda x: x[0] != "" or x[2] != "", syl_list))
+        
+        return syl_list
+    
+    # Insert new word from the combination of two syllables to the list of new words (new_data) with duplicate checking each n-th iteration
+    def inset_new_word(new_data, syl_a, syl_b, c, n=50000):
+        # If the 1st syllable is a closed syllable (ends with a consonant/has a coda) and the 2nd syllable has no onset,
+        # move the coda from the 1st syllable to the 2nd syllable as an onset
+        if syl_a[2] != "" and syl_b[0] == "":
+            syl_a_text = f"{syl_a[0]}{syl_a[1]}"
+            syl_b_text = f"{syl_a[2]}{syl_b[1]}{syl_b[2]}"
+        else:
+            syl_a_text = f"{syl_a[0]}{syl_a[1]}{syl_a[2]}"
+            syl_b_text = f"{syl_b[0]}{syl_b[1]}{syl_b[2]}"
+
+        new_syl_list = [syl_a_text, syl_b_text]
+        new_syl_text = util.syllables_to_text(new_syl_list)
+        new_word = util.syllables_to_word(new_syl_list)
+        new_data.append((new_word, new_syl_text))
+        c += 1
+
+        if c == n:
+            new_data = list(dict.fromkeys(new_data))
+            c = 0
+        
+        return c
     
     # Create a collection of syllable list of each word
     syl_list_collection = []
@@ -275,34 +293,24 @@ def acronym(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, 
         syl_list_collection.append(get_syllable_list(row.syllables))
     
     # Augment new words
-    df_new = pd.DataFrame([], columns=["word", "syllables"])
+    new_data = []
+    c = 0
 
-    for row_i in data_train.itertuples():        
-        syl_list_i = syl_list_collection[row_i.Index]
-        new_data_i = []
-        
-        for row_j in data_train.itertuples():
+    for i in range(len(syl_list_collection)):
+        print(f"Word: {i+1}/{len(syl_list_collection)}", end="\r")
+        for j in range(i+1, len(syl_list_collection)):
             if stop():
                 return
-            
-            if row_i.Index == row_j.Index:
-                continue
 
-            syl_list_j = syl_list_collection[row_j.Index]
-
-            for syl_i in syl_list_i:
-                for syl_j in syl_list_j:
-                    new_syl_list = [syl_i, syl_j] 
-                    new_word = util.syllables_to_word(new_syl_list)
-                    new_syl_text = util.syllables_to_text(new_syl_list)
-
-                    new_data_i.append((new_word, new_syl_text))
-        
-        df_new_i = pd.DataFrame(new_data_i, columns=["word", "syllables"])
-        df_new = pd.concat([df_new, df_new_i], ignore_index=True)
-        df_new = df_new.drop_duplicates("syllables").reset_index(drop=True)
-
-    return df_new
+            for syl_i in syl_list_collection[i]:
+                for syl_j in syl_list_collection[j]:
+                    c = inset_new_word(new_data, syl_i, syl_j, c)
+                    c = inset_new_word(new_data, syl_j, syl_i, c)
+    
+    print(f"Word: {i+1}/{len(syl_list_collection)}")
+    
+    new_data = list(dict.fromkeys(new_data))
+    return pd.DataFrame(new_data, columns=["word", "syllables"])
 
 
 def validate_augmentation(data_train_aug, illegal_sequences, stop=lambda: False):
