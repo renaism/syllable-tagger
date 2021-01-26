@@ -231,7 +231,7 @@ def transpose_nucleus(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS
     return pd.DataFrame(new_data, columns=['word', 'syllables'])
 
 
-def acronym(data_train, batch=1000000, check_at=100000, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT, stop=lambda: False, verbose=False):        
+def acronym(data_train, fdir, batch=100, check_at=1000000, start_at=None, end_at=None, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT, stop=lambda: False, verbose=False):        
     start_t = time.time()
     
     # Get list of syllable + new syllable from a syllabified text
@@ -281,12 +281,22 @@ def acronym(data_train, batch=1000000, check_at=100000, vowels=VOWELS_DEFAULT, s
         new_syl_text = util.syllables_to_text(new_syl_list)
         new_syl_text_list.append(new_syl_text)
     
-    def save_current_batch(new_syl_text_list, batch_i, fpath):
+    def check_duplicate():
+        nonlocal new_syl_text_list, c, checked, current_unique_pool, total_check_time
+
+        check_start_t = time.time()
+        new_syl_text_list = list(dict.fromkeys(new_syl_text_list))
+        c = 0
+        checked += 1
+        current_unique_pool = len(new_syl_text_list)
+        total_check_time += time.time() - check_start_t
+
+    def save_current_batch(fpath):
+        nonlocal new_syl_text_list
+
         new_df = pd.DataFrame(new_syl_text_list, columns=["syllables"])
         new_df.insert(loc=0, column="word", value=new_df["syllables"].apply(lambda x: x.replace(".", "")))
         new_df.to_csv(fpath, sep="\t", index=False, header=False)
-
-        return len(new_df)
     
     # Create a collection of syllable list of each word
     syl_list_collection = []
@@ -301,9 +311,19 @@ def acronym(data_train, batch=1000000, check_at=100000, vowels=VOWELS_DEFAULT, s
     total_new_words = 0
     c = 0
     checked = 0
+    current_unique_pool = 0
+    total_check_time = 0
 
-    for i in range(len(syl_list_collection)):
-        util.printv(verbose, f"Progress: {i+1}/{len(syl_list_collection)} | Batch: {batch_n} | Checked: {checked} | New words: {total_new_words + len(new_syl_text_list)} | Time elapsed: {time.time() - start_t:.2f}s", end='\r', cp=cp)
+    batch_times = []
+    start_batch_t = time.time()
+
+    if not start_at and not end_at:
+        i_range = range(len(syl_list_collection))
+    else:
+        i_range = range(start_at-1 if start_at else 0, end_at if end_at else len(syl_list_collection))
+
+    for i in i_range:
+        util.printv(verbose, f"Progress: {i+1}/{len(syl_list_collection)} | Batch: {batch_n} | Checked: {checked} | Current new words: {current_unique_pool} + {c} (Saved: {total_new_words}) | Total check time: {total_check_time:.2f}s | Time: {time.time() - start_t:.2f}s", end='\r', cp=cp)
         for j in range(i+1, len(syl_list_collection)):
             if stop():
                 return
@@ -314,26 +334,28 @@ def acronym(data_train, batch=1000000, check_at=100000, vowels=VOWELS_DEFAULT, s
                     inset_new_word(new_syl_text_list, syl_j, syl_i, batch_n)
                     c += 2
             
-            if c >= check_at:
-                new_syl_text_list = list(dict.fromkeys(new_syl_text_list))
-                checked += 1
-                c = 0
+                    if c >= check_at:
+                        check_duplicate()
+        
+        if (i+1) % batch == 0 or i == i_range[-1]:
+            check_duplicate()
 
-                if len(new_syl_text_list) >= batch:
-                    batch_n += 1
-                    total_new_words += save_current_batch(new_syl_text_list, batch_n, f"aug_result/train_aug_acronym_batch_{batch_n}.txt")
-                    new_syl_text_list = []
-    
-    batch_n += 1
-    new_syl_text_list = list(dict.fromkeys(new_syl_text_list))
-    total_new_words += save_current_batch(new_syl_text_list, batch_n, f"aug_result/train_aug_acronym_batch_{batch_n}.txt")
+            batch_n += 1
+            save_current_batch(f"{fdir}/batch_{batch_n}.txt")
+            total_new_words += len(new_syl_text_list)
+            new_syl_text_list = []
 
-    util.printv(verbose, f"Progress: {i+1}/{len(syl_list_collection)} | Batch: {batch_n} | Checked: {checked} | New words: {total_new_words} | Time elapsed: {time.time() - start_t:.2f}s", end='\n')
+            batch_times.append(time.time() - start_batch_t)
+            start_batch_t = time.time()
+
+    util.printv(verbose, f"Progress: {i+1}/{len(syl_list_collection)} | Batch: {batch_n} | Checked: {checked} | Current new words: {current_unique_pool} + {c} (Saved: {total_new_words}) | Total check time: {total_check_time:.2f}s | Time elapsed: {time.time() - start_t:.2f}s", end='\n')
 
     return {
-        "new words": total_new_words,
-        "duplicate check": checked,
-        "batch": batch_n
+        "total_new_words": total_new_words,
+        "total_times": time.time() - start_t,
+        "duplicate_check": checked,
+        "batch": batch_n,
+        "batch_times": batch_times
     }
 
 

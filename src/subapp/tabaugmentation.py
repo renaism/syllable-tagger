@@ -30,6 +30,7 @@ class TabAugmentation(Tab):
         self.var_flip_onsets = tk.BooleanVar()
         self.var_swap_consonants = tk.BooleanVar()
         self.var_transpose_nucleus = tk.BooleanVar()
+        self.var_acronym = tk.BooleanVar()
         self.var_distinct = tk.BooleanVar()
         self.var_distinct.set(True)
         self.var_validation = tk.BooleanVar()
@@ -58,6 +59,9 @@ class TabAugmentation(Tab):
 
         self.cbt_transpose_nucleus = tk.Checkbutton(self.frm_sidebar, variable=self.var_transpose_nucleus, text="Transpose nucleus")
         self.cbt_transpose_nucleus.grid(sticky="nw")
+
+        self.cbt_acronym = tk.Checkbutton(self.frm_sidebar, variable=self.var_acronym, text="Acronym")
+        self.cbt_acronym.grid(sticky="nw")
 
         tk.Label(self.frm_sidebar, text="Other settings").grid(sticky="nw")
 
@@ -146,6 +150,9 @@ class TabAugmentation(Tab):
         if self.var_transpose_nucleus.get():
             ops.append("tn")
         
+        if self.var_acronym.get():
+            ops.append("ac")
+        
         for i, op in enumerate(ops):
             if i == 0:
                 fname += "["
@@ -221,6 +228,7 @@ class TabAugmentation(Tab):
                 flip_onsets_=self.var_flip_onsets.get(),
                 swap_consonants_=self.var_swap_consonants.get(),
                 transpose_nucleus_=self.var_transpose_nucleus.get(),
+                acronym_=self.acronym.get(),
                 distinct=self.var_distinct.get(),
                 validation=self.var_validation.get(),
                 validation_fname=self.var_validation_fname.get(),
