@@ -2,6 +2,7 @@ import utility as util
 import pandas as pd
 import re
 import time
+import multiprocessing
 
 from config import *
 
@@ -359,23 +360,42 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, start_at=None, end_at
     }
 
 
-def validate_augmentation(data_train_aug, illegal_sequences, stop=lambda: False):
+def validate_augmentation_worker(proc_i, word_syllables, illegal_sequences):
     new_data = []
+    print(f"{proc_i}: {len(word_syllables)}")
 
-    for row in data_train_aug.itertuples():
-        if stop():
-            return
-
+    for syl in word_syllables:
         valid = True
 
-        for seq in illegal_sequences["sequence"]:
-            if seq in row.syllables:
+        for seq in illegal_sequences:
+            if seq in syl:
                 valid = False
                 break
         
         if not valid:
             continue
             
-        new_data.append((row.word, row.syllables))
+        new_data.append(syl)
     
-    return pd.DataFrame(new_data, columns=['word', 'syllables'])
+    return new_data
+
+
+def validate_augmentation(data_train_aug, illegal_sequences, n_proc=1, stop=lambda: False):
+    batch = len(data_train_aug) // n_proc
+    word_syllables = list(data_train_aug["syllables"])
+    ill_seq = list(illegal_sequences["sequence"])
+
+    pool = multiprocessing.Pool(processes=n_proc)
+    new_data_batch = pool.starmap(validate_augmentation_worker, [
+        (i, word_syllables[i*batch : (i+1)*batch if i < n_proc-1 else len(data_train_aug)], ill_seq) for i in range(n_proc)
+    ])
+
+    new_data = []
+    for i in range(len(new_data_batch)):
+        print(f"{i}: {len(new_data_batch[i])}")
+        new_data += new_data_batch[i]
+    
+    new_df = pd.DataFrame(new_data, columns=["syllables"])
+    new_df.insert(loc=0, column="word", value=new_df["syllables"].apply(lambda x: x.replace(".", "")))
+    
+    return new_df
