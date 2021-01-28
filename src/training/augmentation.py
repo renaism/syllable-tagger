@@ -1,8 +1,10 @@
 import utility as util
 import pandas as pd
+import math
 import re
 import time
 import multiprocessing
+import os
 
 from config import *
 
@@ -232,7 +234,96 @@ def transpose_nucleus(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS
     return pd.DataFrame(new_data, columns=['word', 'syllables'])
 
 
-def acronym(data_train, fdir, batch=100, check_at=1000000, start_at=None, end_at=None, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT, stop=lambda: False, verbose=False):        
+def acronym_worker(proc_i, syl_list_collection, i_range, batch, check_at, fdir, vowels, semi_vowels, diphtongs, verbose):        
+    start_t = time.time()
+    
+    # Insert new word from the combination of two syllables to the list of new words (new_data) with duplicate checking each n-th iteration
+    def inset_new_word(syl_a, syl_b):
+        nonlocal new_syl_text_list
+
+        # If the 1st syllable is a closed syllable (ends with a consonant/has a coda) and the 2nd syllable has no onset,
+        # move the coda from the 1st syllable to the 2nd syllable as an onset
+        if syl_a[2] != "" and syl_b[0] == "":
+            syl_a_text = f"{syl_a[0]}{syl_a[1]}"
+            syl_b_text = f"{syl_a[2]}{syl_b[1]}{syl_b[2]}"
+        else:
+            syl_a_text = f"{syl_a[0]}{syl_a[1]}{syl_a[2]}"
+            syl_b_text = f"{syl_b[0]}{syl_b[1]}{syl_b[2]}"
+
+        new_syl_list = [syl_a_text, syl_b_text]
+        new_syl_text = util.syllables_to_text(new_syl_list)
+        new_syl_text_list.append(new_syl_text)
+    
+    def check_duplicate():
+        nonlocal new_syl_text_list, c, checked, current_unique_pool, total_check_time
+
+        check_start_t = time.time()
+        new_syl_text_list = list(dict.fromkeys(new_syl_text_list))
+        c = 0
+        checked += 1
+        current_unique_pool = len(new_syl_text_list)
+        total_check_time += time.time() - check_start_t
+
+    def save_current_batch():
+        nonlocal new_syl_text_list, fpath_list, batch_n, fdir
+
+        os.makedirs(f"{fdir}/temp/p_{proc_i+1}", exist_ok=True)
+        fpath = f"{fdir}/temp/p_{proc_i+1}/p_{proc_i+1}_batch_{batch_n}.txt"
+        fpath_list.append(fpath)
+        new_df = pd.DataFrame(new_syl_text_list, columns=["syllables"])
+        new_df.to_csv(fpath, sep="\t", index=False, header=False)
+    
+    # Augment new words
+    cp = util.ContinuousPrint()
+    new_syl_text_list = []
+    batch_n = 0
+    total_new_words = 0
+    c = 0
+    checked = 0
+    current_unique_pool = 0
+    total_check_time = 0
+
+    batch_times = []
+    fpath_list = []
+    start_batch_t = time.time()
+
+    assert type(i_range) == range
+
+    for i in i_range:
+        util.printv(verbose, f"Progress: {i+1}/{len(syl_list_collection)} | Batch: {batch_n} | Checked: {checked} | Current new words: {current_unique_pool} + {c} (Saved: {total_new_words}) | Total check time: {total_check_time:.2f}s | Time: {time.time() - start_t:.2f}s", end='\r', cp=cp)
+        for j in range(i+1, len(syl_list_collection)):
+            for syl_i in syl_list_collection[i]:
+                for syl_j in syl_list_collection[j]:
+                    inset_new_word(syl_i, syl_j)
+                    inset_new_word(syl_j, syl_i)
+                    c += 2
+            
+                    if c >= check_at:
+                        check_duplicate()
+        
+        if (i+1) % batch == 0 or i == i_range[-1]:
+            check_duplicate()
+
+            batch_n += 1
+            save_current_batch()
+            total_new_words += len(new_syl_text_list)
+            new_syl_text_list = []
+
+            batch_times.append(time.time() - start_batch_t)
+            start_batch_t = time.time()
+
+    util.printv(verbose, f"Progress: {i+1}/{len(syl_list_collection)} | Batch: {batch_n} | Checked: {checked} | Current new words: {current_unique_pool} + {c} (Saved: {total_new_words}) | Total check time: {total_check_time:.2f}s | Time elapsed: {time.time() - start_t:.2f}s", end='\n')
+
+    return {
+        "total_new_words": total_new_words,
+        "total_times": time.time() - start_t,
+        "duplicate_check": checked,
+        "batch": batch_n,
+        "fpath_list": fpath_list
+    }
+
+
+def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT, stop=lambda: False, verbose=False):
     start_t = time.time()
     
     # Get list of syllable + new syllable from a syllabified text
@@ -266,98 +357,69 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, start_at=None, end_at
         syl_list = list(filter(lambda x: x[0] != "" or x[2] != "", syl_list))
         
         return syl_list
-    
-    # Insert new word from the combination of two syllables to the list of new words (new_data) with duplicate checking each n-th iteration
-    def inset_new_word(new_syl_text_list, syl_a, syl_b, batch_n):
-        # If the 1st syllable is a closed syllable (ends with a consonant/has a coda) and the 2nd syllable has no onset,
-        # move the coda from the 1st syllable to the 2nd syllable as an onset
-        if syl_a[2] != "" and syl_b[0] == "":
-            syl_a_text = f"{syl_a[0]}{syl_a[1]}"
-            syl_b_text = f"{syl_a[2]}{syl_b[1]}{syl_b[2]}"
-        else:
-            syl_a_text = f"{syl_a[0]}{syl_a[1]}{syl_a[2]}"
-            syl_b_text = f"{syl_b[0]}{syl_b[1]}{syl_b[2]}"
 
-        new_syl_list = [syl_a_text, syl_b_text]
-        new_syl_text = util.syllables_to_text(new_syl_list)
-        new_syl_text_list.append(new_syl_text)
-    
-    def check_duplicate():
-        nonlocal new_syl_text_list, c, checked, current_unique_pool, total_check_time
-
-        check_start_t = time.time()
-        new_syl_text_list = list(dict.fromkeys(new_syl_text_list))
-        c = 0
-        checked += 1
-        current_unique_pool = len(new_syl_text_list)
-        total_check_time += time.time() - check_start_t
-
-    def save_current_batch(fpath):
-        nonlocal new_syl_text_list
-
-        new_df = pd.DataFrame(new_syl_text_list, columns=["syllables"])
-        new_df.insert(loc=0, column="word", value=new_df["syllables"].apply(lambda x: x.replace(".", "")))
-        new_df.to_csv(fpath, sep="\t", index=False, header=False)
-    
     # Create a collection of syllable list of each word
     syl_list_collection = []
     
     for row in data_train.itertuples():
         syl_list_collection.append(get_syllable_list(row.syllables))
     
-    # Augment new words
-    cp = util.ContinuousPrint()
-    new_syl_text_list = []
-    batch_n = 0
-    total_new_words = 0
-    c = 0
-    checked = 0
-    current_unique_pool = 0
-    total_check_time = 0
+    N = len(syl_list_collection)
+    
+    worker_ranges = []
 
-    batch_times = []
-    start_batch_t = time.time()
-
-    if not start_at and not end_at:
-        i_range = range(len(syl_list_collection))
+    if n_proc == 1:
+        worker_ranges += [range(0, N)]
+    elif n_proc == 4:
+        worker_ranges += [
+            range(0, math.ceil(0.14*N)),
+            range(math.ceil(0.14*N), math.ceil(0.30*N)),
+            range(math.ceil(0.30*N), math.ceil(0.51*N)),
+            range(math.ceil(0.51*N), N)
+        ]
     else:
-        i_range = range(start_at-1 if start_at else 0, end_at if end_at else len(syl_list_collection))
+        return
+    
+    pool = multiprocessing.Pool(processes=n_proc)
+    worker_results = pool.starmap_async(acronym_worker, [(
+        i, syl_list_collection, worker_ranges[i], batch, check_at, fdir, vowels, semi_vowels, diphtongs, verbose
+    ) for i in range(n_proc)])
+    
+    # Combine temporary batch files to a single file
+    batch_fpath_list = []
 
-    for i in i_range:
-        util.printv(verbose, f"Progress: {i+1}/{len(syl_list_collection)} | Batch: {batch_n} | Checked: {checked} | Current new words: {current_unique_pool} + {c} (Saved: {total_new_words}) | Total check time: {total_check_time:.2f}s | Time: {time.time() - start_t:.2f}s", end='\r', cp=cp)
-        for j in range(i+1, len(syl_list_collection)):
-            if stop():
-                return
+    for res in worker_results.get():
+        batch_fpath_list += res["fpath_list"]
+    
+    util.printv(verbose, f"Augmentation time: {time.time() - start_t:.2f}")
+    
+    start_combine_t = time.time()
+    df_combine = pd.DataFrame([], columns=["syllables"])
+    total_words_uncombined = 0
+    c = 0
 
-            for syl_i in syl_list_collection[i]:
-                for syl_j in syl_list_collection[j]:
-                    inset_new_word(new_syl_text_list, syl_i, syl_j, batch_n)
-                    inset_new_word(new_syl_text_list, syl_j, syl_i, batch_n)
-                    c += 2
-            
-                    if c >= check_at:
-                        check_duplicate()
-        
-        if (i+1) % batch == 0 or i == i_range[-1]:
-            check_duplicate()
+    for i, fpath in enumerate(batch_fpath_list):
+        df = pd.read_csv(fpath, sep="\t", header=None, index_col=False, names=["syllables"], na_filter=False)
+        total_words_uncombined += len(df)
+        c += len(df)
+        df_combine = pd.concat([df_combine, df], ignore_index=True)
+        df = None
 
-            batch_n += 1
-            save_current_batch(f"{fdir}/batch_{batch_n}.txt")
-            total_new_words += len(new_syl_text_list)
-            new_syl_text_list = []
+        if c >= check_at or i == len(batch_fpath_list)-1:
+            df_combine = df_combine.drop_duplicates("syllables").reset_index(drop=True)
+            c = 0
 
-            batch_times.append(time.time() - start_batch_t)
-            start_batch_t = time.time()
+    total_words_combined = len(df_combine)
+    reduction = (total_words_uncombined - total_words_combined) / total_words_uncombined
+    util.printv(verbose, f"Uncombined: {total_words_uncombined} | Combined: {total_words_combined} | Reduction: {reduction * 100:.2f}%")
+    util.printv(verbose, f"Combine time: {time.time() - start_combine_t:.2f}")
+    util.printv(verbose, f"Total time: {time.time() - start_t:.2f}")
 
-    util.printv(verbose, f"Progress: {i+1}/{len(syl_list_collection)} | Batch: {batch_n} | Checked: {checked} | Current new words: {current_unique_pool} + {c} (Saved: {total_new_words}) | Total check time: {total_check_time:.2f}s | Time elapsed: {time.time() - start_t:.2f}s", end='\n')
+    # Add word column to the DataFrame 
+    df_combine.insert(loc=0, column="word", value=df_combine["syllables"].apply(lambda x: x.replace(".", "")))
+    df_combine.to_csv(f"{fdir}/combined.txt", sep='\t', index=False, header=False)
 
-    return {
-        "total_new_words": total_new_words,
-        "total_times": time.time() - start_t,
-        "duplicate_check": checked,
-        "batch": batch_n,
-        "batch_times": batch_times
-    }
+    return df_combine, worker_results.get() 
 
 
 def validate_augmentation_worker(proc_i, word_syllables, illegal_sequences):
