@@ -6,6 +6,7 @@ import time
 import multiprocessing
 import os
 
+from shutil import rmtree
 from config import *
 
 CONSONANT_SWAP_MAP = {
@@ -324,8 +325,6 @@ def acronym_worker(proc_i, syl_list_collection, i_range, batch, check_at, fdir, 
 
 
 def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS_DEFAULT, diphtongs=DIPHTONGS_DEFAULT, stop=lambda: False, verbose=False):
-    start_t = time.time()
-    
     # Get list of syllable + new syllable from a syllabified text
     def get_syllable_list(syl_text):
         # Get the list of syllables
@@ -357,6 +356,27 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWE
         syl_list = list(filter(lambda x: x[0] != "" or x[2] != "", syl_list))
         
         return syl_list
+    
+    def get_worker_ranges(n_data, n_proc):
+        S_n = (n_data/2) * (n_data + 1)
+        a = -1
+        b = 2 * n_data + 1
+
+        ranges = []
+
+        prev_x = 0
+
+        for i in range(n_proc):
+            c = -2 * S_n * ((i+1)/n_proc)
+            d = (b**2) - (4*a*c)
+
+            x = math.ceil(min((-b-math.sqrt(d))/(2*a), (-b+math.sqrt(d))/(2*a)))
+            ranges.append(range(prev_x, x))
+            prev_x = x
+        
+        return ranges
+
+    start_t = time.time()
 
     # Create a collection of syllable list of each word
     syl_list_collection = []
@@ -366,34 +386,22 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWE
     
     N = len(syl_list_collection)
     
-    worker_ranges = []
-
-    if n_proc == 1:
-        worker_ranges += [range(0, N)]
-    elif n_proc == 4:
-        worker_ranges += [
-            range(0, math.ceil(0.14*N)),
-            range(math.ceil(0.14*N), math.ceil(0.30*N)),
-            range(math.ceil(0.30*N), math.ceil(0.51*N)),
-            range(math.ceil(0.51*N), N)
-        ]
-    else:
-        return
-    
+    worker_ranges = get_worker_ranges(len(syl_list_collection), n_proc)
     pool = multiprocessing.Pool(processes=n_proc)
-    worker_results = pool.starmap_async(acronym_worker, [(
+    worker_pool_results = pool.starmap_async(acronym_worker, [(
         i, syl_list_collection, worker_ranges[i], batch, check_at, fdir, vowels, semi_vowels, diphtongs, verbose
     ) for i in range(n_proc)])
     
     # Combine temporary batch files to a single file
+    worker_results = worker_pool_results.get()
     batch_fpath_list = []
 
-    for res in worker_results.get():
+    for res in worker_results:
         batch_fpath_list += res["fpath_list"]
     
-    util.printv(verbose, f"Augmentation time: {time.time() - start_t:.2f}")
+    augmentation_time = time.time() - start_t
+    util.printv(verbose, f"Augmentation time: {augmentation_time:.2f}")
     
-    start_combine_t = time.time()
     df_combine = pd.DataFrame([], columns=["syllables"])
     total_words_uncombined = 0
     c = 0
@@ -409,17 +417,39 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWE
             df_combine = df_combine.drop_duplicates("syllables").reset_index(drop=True)
             c = 0
 
+    combine_time = time.time() - start_t - augmentation_time
+    total_time = time.time() - start_t
     total_words_combined = len(df_combine)
     reduction = (total_words_uncombined - total_words_combined) / total_words_uncombined
     util.printv(verbose, f"Uncombined: {total_words_uncombined} | Combined: {total_words_combined} | Reduction: {reduction * 100:.2f}%")
-    util.printv(verbose, f"Combine time: {time.time() - start_combine_t:.2f}")
-    util.printv(verbose, f"Total time: {time.time() - start_t:.2f}")
+    util.printv(verbose, f"Combine time: {combine_time:.2f}")
+    util.printv(verbose, f"Total time: {total_time:.2f}")
 
     # Add word column to the DataFrame 
     df_combine.insert(loc=0, column="word", value=df_combine["syllables"].apply(lambda x: x.replace(".", "")))
     df_combine.to_csv(f"{fdir}/combined.txt", sep='\t', index=False, header=False)
 
-    return df_combine, worker_results.get() 
+    # Remove temporary files
+    rmtree(f"{fdir}/temp")
+
+    return {
+        "data": df_combine,
+        "metadata": {
+            "parameters": {
+                "batch": batch, 
+                "check_at": check_at, 
+                "n_proc": n_proc
+            },
+            "words_original": len(data_train),
+            "words_uncombined": total_words_uncombined,
+            "words_combined": total_words_combined,
+            "augmentation_time": augmentation_time,
+            "combine_time": combine_time,
+            "total_time": total_time,
+            "batch": sum(res["batch"] for res in worker_results),
+            "duplicate_check": sum(res["duplicate_check"] for res in worker_results)
+        }
+    }
 
 
 def validate_augmentation_worker(proc_i, word_syllables, illegal_sequences):
