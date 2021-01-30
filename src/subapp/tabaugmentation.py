@@ -180,9 +180,6 @@ class TabAugmentation(Tab):
         if len(self.train_files) < 1:
             self.status_bar.write("[!] No train file selected.\n")
             valid = False
-        
-        if not self.var_flip_onsets.get() and not self.var_swap_consonants.get() and not self.var_transpose_nucleus.get():
-            self.status_bar.write("[!] No augmentation method selected.\n")
 
         if self.var_output_fname.get() == '':
             self.status_bar.write("[!] File name can not be empty.\n")
@@ -197,6 +194,10 @@ class TabAugmentation(Tab):
             valid = False
         elif not os.path.isdir(self.var_output_fdir.get()):
             self.status_bar.write("[!] Directory is not exists/valid.\n")
+            valid = False
+        
+        if not(self.var_flip_onsets.get() or self.var_swap_consonants.get() or self.var_transpose_nucleus.get() or self.var_acronym.get()):
+            self.status_bar.write("[!] No augmentation method selected.\n")
             valid = False
         
         self.status_bar.write("\n")
@@ -228,7 +229,7 @@ class TabAugmentation(Tab):
                 flip_onsets_=self.var_flip_onsets.get(),
                 swap_consonants_=self.var_swap_consonants.get(),
                 transpose_nucleus_=self.var_transpose_nucleus.get(),
-                acronym_=self.acronym.get(),
+                acronym_=self.var_acronym.get(),
                 distinct=self.var_distinct.get(),
                 validation=self.var_validation.get(),
                 validation_fname=self.var_validation_fname.get(),

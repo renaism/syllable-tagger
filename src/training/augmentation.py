@@ -235,7 +235,7 @@ def transpose_nucleus(data_train, vowels=VOWELS_DEFAULT, semi_vowels=SEMI_VOWELS
     return pd.DataFrame(new_data, columns=['word', 'syllables'])
 
 
-def acronym_worker(proc_i, syl_list_collection, i_range, batch, check_at, fdir, vowels, semi_vowels, diphtongs, verbose):        
+def acronym_worker(proc_i, syl_list_collection, progress, i_range, batch, check_at, fdir, vowels, semi_vowels, diphtongs, verbose):        
     start_t = time.time()
     
     # Insert new word from the combination of two syllables to the list of new words (new_data) with duplicate checking each n-th iteration
@@ -302,6 +302,8 @@ def acronym_worker(proc_i, syl_list_collection, i_range, batch, check_at, fdir, 
                     if c >= check_at:
                         check_duplicate()
         
+        progress.value += 1
+        
         if (i+1) % batch == 0 or i == i_range[-1]:
             check_duplicate()
 
@@ -358,9 +360,10 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWE
         return syl_list
     
     def get_worker_ranges(n_data, n_proc):
-        S_n = (n_data/2) * (n_data + 1)
+        n = n_data - 1
+        S_n = (n/2) * (n + 1)
         a = -1
-        b = 2 * n_data + 1
+        b = 2 * n + 1
 
         ranges = []
 
@@ -385,12 +388,25 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWE
         syl_list_collection.append(get_syllable_list(row.syllables))
     
     N = len(syl_list_collection)
-    
+    manager = multiprocessing.Manager()
+    progress = [ manager.Value("i", 0) for _ in range(n_proc) ] 
     worker_ranges = get_worker_ranges(len(syl_list_collection), n_proc)
     pool = multiprocessing.Pool(processes=n_proc)
     worker_pool_results = pool.starmap_async(acronym_worker, [(
-        i, syl_list_collection, worker_ranges[i], batch, check_at, fdir, vowels, semi_vowels, diphtongs, verbose
+        i, syl_list_collection, progress[i], worker_ranges[i], batch, check_at, fdir, vowels, semi_vowels, diphtongs, False
     ) for i in range(n_proc)])
+
+    cp = util.ContinuousPrint()
+
+    while not worker_pool_results.ready():
+        if time.time() < cp.last_time + cp.time_interval:
+            continue
+
+        percentages = [progress[i].value / len(worker_ranges[i]) for i in range(len(progress))]
+        util.printv(verbose, f"Progress: {sum(percentages) / len(progress) * 100:.2f}%", end="\r", cp=cp)
+    
+    percentages = [progress[i].value / len(worker_ranges[i]) for i in range(len(progress))]
+    util.printv(verbose, f"Progress: {sum(percentages) / len(progress) * 100:.2f}%", end="\n")
     
     # Combine temporary batch files to a single file
     worker_results = worker_pool_results.get()
@@ -400,7 +416,7 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWE
         batch_fpath_list += res["fpath_list"]
     
     augmentation_time = time.time() - start_t
-    util.printv(verbose, f"Augmentation time: {augmentation_time:.2f}")
+    #util.printv(verbose, f"Augmentation time: {augmentation_time:.2f}")
     
     df_combine = pd.DataFrame([], columns=["syllables"])
     total_words_uncombined = 0
@@ -421,9 +437,9 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWE
     total_time = time.time() - start_t
     total_words_combined = len(df_combine)
     reduction = (total_words_uncombined - total_words_combined) / total_words_uncombined
-    util.printv(verbose, f"Uncombined: {total_words_uncombined} | Combined: {total_words_combined} | Reduction: {reduction * 100:.2f}%")
-    util.printv(verbose, f"Combine time: {combine_time:.2f}")
-    util.printv(verbose, f"Total time: {total_time:.2f}")
+    #util.printv(verbose, f"Uncombined: {total_words_uncombined} | Combined: {total_words_combined} | Reduction: {reduction * 100:.2f}%")
+    #util.printv(verbose, f"Combine time: {combine_time:.2f}")
+    #util.printv(verbose, f"Total time: {total_time:.2f}")
 
     # Add word column to the DataFrame 
     df_combine.insert(loc=0, column="word", value=df_combine["syllables"].apply(lambda x: x.replace(".", "")))
@@ -454,7 +470,6 @@ def acronym(data_train, fdir, batch=100, check_at=1000000, n_proc=1, vowels=VOWE
 
 def validate_augmentation_worker(proc_i, word_syllables, illegal_sequences):
     new_data = []
-    print(f"{proc_i}: {len(word_syllables)}")
 
     for syl in word_syllables:
         valid = True

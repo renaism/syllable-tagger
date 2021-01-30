@@ -6,7 +6,7 @@ import ngram
 import utility as util
 
 from training.preprocess import tokenize, tokenize_g2p, pad_tokens
-from training.augmentation import flip_onsets, swap_consonants, transpose_nucleus, validate_augmentation
+from training.augmentation import flip_onsets, swap_consonants, transpose_nucleus, acronym, validate_augmentation
 from testing.syllabification import syllabify, save_result
 from testing.stemmer import Stemmer
 
@@ -256,13 +256,19 @@ def syllabify_folds(data_test_fnames, n_gram_fnames, n, prob_args, n_gram_aug_fn
     print("DONE in {:.2f} s".format(end_t - start_t))
 
 
-def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True, flip_onsets_=False, swap_consonants_=False, transpose_nucleus_=False, acronym_=False, distinct=True, validation=False, validation_fname="", include_original=False, stop=lambda: False):
+def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True, flip_onsets_=False, swap_consonants_=False, transpose_nucleus_=False, acronym_=False, distinct=True, validation=False, validation_fname="", include_original=False, extra_params=None, stop=lambda: False):
     start_t = time.time()
+
+    if not extra_params:
+        extra_params = {
+            "n_proc": 4
+        }
 
     fold_list = get_folds_from_fnames(data_train_fnames)
     fold_mode = fold_list is not None
 
-    print(f"Fold mode: {fold_mode}\n")
+    print(f"Fold mode: {fold_mode}")
+    print(f"n process: {extra_params["n_proc"]}\n")
 
     config = load_config()
     vowels = list(util.str_to_tags(config["SYMBOLS"]["vowels"]))
@@ -271,6 +277,14 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
 
     for i in range(len(data_train_fnames)):
         idx = fold_list[i] if fold_mode else i+1
+
+        # Set ouptput file name
+        fname = output_fname
+
+        if fold_mode:
+            fname += f"_fold_{idx}"
+        elif len(data_train_fnames) > 1:
+            fname += f"_{i+1}"
 
         if fold_mode:
             print(f"Fold {idx} ({i+1}/{len(fold_list)})")
@@ -337,14 +351,36 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
             if stop(): return
             print("Transposing nucleus DONE in {:.2f} s".format(time.time() - i_start_t))
         
+        if acronym_:
+            i_start_t = time.time()
+
+            print("Generating acronym...")
+            acronym_res = acronym(data_train, output_fdir, n_proc=extra_params["n_proc"], vowels=vowels, semi_vowels=semi_vowels, diphtongs=diphtongs, stop=stop, verbose=True)
+            data_stack += [acronym_res["data"]]
+            df_acronym = None
+
+            os.makedirs(f"{output_fdir}/logs", exist_ok=True)
+            util.save_dict_to_log(acronym_res["metadata"], f"log_acronym_{fname}", f"{output_fdir}/logs/")
+
+            if stop(): return
+            print("Generating acronym DONE in {:.2f} s".format(time.time() - i_start_t))
+
+        
         # Combine all augmented data
         if not include_original:
             data_stack = data_stack[1:]
         
         data_train_aug = pd.concat(data_stack, ignore_index=True)
+        data_stack = None
 
         if distinct:
+            i_start_t = time.time()
+
+            print("Removing duplicates...", end="\r")
+
             data_train_aug = data_train_aug.drop_duplicates("syllables").reset_index(drop=True)
+
+            print("Removing duplicates DONE in {:.2f} s".format(time.time() - i_start_t))
 
         if validation:
             i_start_t = time.time()
@@ -359,7 +395,7 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
                 na_filter=False
             )
 
-            data_train_aug = validate_augmentation(data_train_aug, illegal_sequences, stop=stop)
+            data_train_aug = validate_augmentation(data_train_aug, illegal_sequences, n_proc=extra_params["n_proc"], stop=stop)
 
             if stop(): return
             print("Validating augmentation DONE in {:.2f} s".format(time.time() - i_start_t))
@@ -367,13 +403,6 @@ def augment_folds(data_train_fnames, output_fname, output_fdir, lower_case=True,
         print(f"Augmented data train length: {len(data_train_aug)} words")
 
         # Save the n-gram to a file
-        fname = output_fname
-
-        if fold_mode:
-            fname += f"_fold_{idx}"
-        elif len(data_train_fnames) > 1:
-            fname += f"_{i+1}"
-        
         data_train_aug.to_csv(
             f"{output_fdir}/{fname}.txt", 
             sep="\t", 
